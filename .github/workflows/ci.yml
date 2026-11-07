@@ -26,3 +26,5 @@ jobs:
         run: |
           ./Tests/Run.Tests.ps1
           ./Tests/UI.Smoke.ps1
+          powershell.exe -NoProfile -File ./Start.ps1 -Preview
+          if ($LASTEXITCODE -ne 0) { throw 'Windows PowerShell entry point failed.' }

@@ -52,6 +52,21 @@ try {
     try { $null = Save-ToolkitSimulation -Directory $temp -ProfileId 'bad' -Results @([pscustomobject]@{ ChangedWindows=$true; Status='OK' }) } catch { $rejected=$true }
     Assert-That $rejected 'History rejects real-change records'
 } finally { if (Test-Path -LiteralPath $temp) { Remove-Item -LiteralPath $temp -Recurse -Force } }
+# Exercise the real entry point from a different working directory. This also
+# runs under Windows PowerShell 5.1 in CI, where parameter defaults differ.
+$startupTemp = Join-Path ([IO.Path]::GetTempPath()) ('toolkit-startup-' + [guid]::NewGuid().ToString('N'))
+$null = New-Item -ItemType Directory -Path $startupTemp
+Push-Location $startupTemp
+try {
+    $dashboard = (& (Join-Path $root 'Start.ps1') -Preview 6>&1 | Out-String)
+    Assert-That ($dashboard.Contains('DASHBOARD / v0.1.0')) 'Entry point resolves default data directory after parameter binding'
+    $dashboard = (& (Join-Path $root 'Start.ps1') -Preview -DataDirectory (Join-Path $startupTemp 'custom') 6>&1 | Out-String)
+    Assert-That ($dashboard.Contains('SIMULATION ONLY')) 'Entry point accepts explicit data directory'
+    Assert-That (-not (Test-Path -LiteralPath (Join-Path $startupTemp 'custom'))) 'Preview does not create a data directory'
+} finally {
+    Pop-Location
+    Remove-Item -LiteralPath $startupTemp -Recurse -Force
+}
 $system = Get-ToolkitSystemInfo
 Assert-That ($null -ne $system.OS -and $null -ne $system.Warnings) 'System detection returns a complete result'
 # Prevent accidental introduction of actual Windows mutations or command dispatch.

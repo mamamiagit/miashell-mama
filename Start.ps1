@@ -3,10 +3,15 @@
 param(
     [switch]$Preview,
     [switch]$SystemInfoOnly,
-    [string]$DataDirectory = (Join-Path $PSScriptRoot 'Data')
+    [string]$DataDirectory
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+# Windows PowerShell 5.1 can evaluate parameter defaults before PSScriptRoot
+# is available. Resolve the default only after parameter binding completes.
+if ([string]::IsNullOrWhiteSpace($DataDirectory)) {
+    $DataDirectory = Join-Path $PSScriptRoot 'Data'
+}
 foreach ($name in @('SystemInfo','Optimization','Logging','Backup','Restore','Interface')) {
     Import-Module (Join-Path $PSScriptRoot "Modules/$name.psm1") -Force -ErrorAction Stop
 }
