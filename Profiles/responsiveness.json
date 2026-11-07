@@ -1,0 +1,13 @@
+{
+  "id": "responsiveness",
+  "title": "System Responsiveness",
+  "description": "Review desktop effects, startup apps, and power tradeoffs.",
+  "optimizationIds": [
+    "startup",
+    "animations",
+    "transparency",
+    "power",
+    "usb",
+    "pcie"
+  ]
+}

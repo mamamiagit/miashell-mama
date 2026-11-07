@@ -1,0 +1,25 @@
+{
+  "id": "custom",
+  "title": "Custom Profile",
+  "description": "Choose from every setting. Saving reusable custom profiles is planned.",
+  "optimizationIds": [
+    "game-mode",
+    "game-dvr",
+    "hags",
+    "mouse",
+    "power",
+    "startup",
+    "animations",
+    "transparency",
+    "notifications",
+    "active-hours",
+    "advertising",
+    "suggestions",
+    "diagnostics",
+    "apps",
+    "widgets",
+    "usb",
+    "pcie",
+    "cpu-priority"
+  ]
+}

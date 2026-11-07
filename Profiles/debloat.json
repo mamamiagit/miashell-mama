@@ -1,0 +1,11 @@
+{
+  "id": "debloat",
+  "title": "Windows Debloat",
+  "description": "Review optional applications and features; nothing is removed.",
+  "optimizationIds": [
+    "apps",
+    "widgets",
+    "suggestions",
+    "startup"
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "version": "0.1.0",
+  "phase": 1,
+  "simulationOnly": true,
+  "defaultProfile": "balanced",
+  "theme": "NeonGreen"
+}

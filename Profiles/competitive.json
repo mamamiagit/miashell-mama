@@ -1,0 +1,14 @@
+{
+  "id": "competitive",
+  "title": "Competitive Gaming",
+  "description": "Review interruptions and input preferences without aggressive scheduling tweaks.",
+  "optimizationIds": [
+    "game-mode",
+    "game-dvr",
+    "notifications",
+    "active-hours",
+    "mouse",
+    "startup",
+    "hags"
+  ]
+}

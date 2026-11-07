@@ -1,0 +1,12 @@
+{
+  "id": "low-end",
+  "title": "Low-End PC",
+  "description": "Review optional startup software and desktop appearance.",
+  "optimizationIds": [
+    "startup",
+    "animations",
+    "transparency",
+    "apps",
+    "power"
+  ]
+}

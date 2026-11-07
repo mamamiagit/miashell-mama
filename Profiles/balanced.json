@@ -1,0 +1,15 @@
+{
+  "id": "balanced",
+  "title": "Balanced Gaming",
+  "description": "Recommended default: preserve Windows functionality while reviewing supported gaming settings.",
+  "optimizationIds": [
+    "game-mode",
+    "game-dvr",
+    "hags",
+    "notifications",
+    "active-hours",
+    "startup",
+    "mouse",
+    "power"
+  ]
+}

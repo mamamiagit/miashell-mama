@@ -1,0 +1,7 @@
+# Machine-local session data and downloaded release artifacts
+Data/
+artifacts/
+*.zip
+*.log
+.vscode/
+.idea/

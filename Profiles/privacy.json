@@ -1,0 +1,10 @@
+{
+  "id": "privacy",
+  "title": "Privacy Focused",
+  "description": "Review supported privacy preferences while preserving security.",
+  "optimizationIds": [
+    "advertising",
+    "suggestions",
+    "diagnostics"
+  ]
+}
