@@ -5,6 +5,7 @@ function Get-ToolkitSystemInfo {
     param()
     $onWindows = $env:OS -eq 'Windows_NT'
     $info = [ordered]@{
+        InteractiveSession = ($onWindows -and [Environment]::UserInteractive -and [Diagnostics.Process]::GetCurrentProcess().SessionId -gt 0)
         IsWindows = $onWindows; OS = [Environment]::OSVersion.VersionString
         Build = 0; CPU = 'Unavailable'; GPU = 'Unavailable'; RAM = 'Unavailable'
         Storage = 'Unavailable'; PowerPlan = 'Unavailable'; Administrator = $false

@@ -26,3 +26,8 @@ Implementation scope when later requested: Phase 1 only. Do not proceed to Phase
 ## Current scope update
 
 The user explicitly authorized Phase 2 (recommendation engine) after confirming the patched Phase 1 works on Windows. Version 0.2.0 implements read-only observation, conservative recommendations and sortable comparisons. All Windows changes remain simulated; Phase 3 is not authorized by that instruction. See Docs/RECOMMENDATIONS.md (relative to repository root) for implemented rules and limits.
+
+
+## Phase 3 authorization and implementation
+
+After confirming Phase 2 worked, the user authorized the next phase. Version 0.3.0 adds the reviewed operation engine for mouse acceleration and minimize/restore animation: native snapshots, original/target plans, dry-run output, permission checks, and verification. Internal setter implementations are reserved for a future rollback-aware dispatcher; no live changes are exposed. Persistent backups and restoration remain Phase 4 and are not authorized by the Phase 3 instruction. See Docs/ENGINE.md.

@@ -2,6 +2,6 @@
 function Get-ToolkitBackupStatus {
     [CmdletBinding()]
     param()
-    [pscustomobject]@{ Available = $false; Message = 'Phase 2 performs no Windows changes. Backup and restoration are planned for Phase 4.' }
+    [pscustomobject]@{ Available = $false; Message = 'Phase 3 performs no Windows changes. Backup and restoration are planned for Phase 4.' }
 }
 Export-ModuleMember -Function Get-ToolkitBackupStatus

@@ -12,7 +12,7 @@ function Show-ToolkitHeader {
     Write-ToolkitLine '|                 WINDOWS PERFORMANCE TOOLKIT                      |'
     Write-ToolkitLine '+------------------------------------------------------------------+'
     Write-ToolkitLine " $Title"
-    Write-ToolkitLine ' PHASE 2 / SIMULATION ONLY / NO WINDOWS SETTINGS ARE CHANGED' Yellow
+    Write-ToolkitLine ' PHASE 3 / SIMULATION ONLY / NO WINDOWS SETTINGS ARE CHANGED' Yellow
     Write-ToolkitLine ''
 }
 
@@ -43,6 +43,26 @@ function Show-ToolkitInformation {
     Wait-ToolkitInput
 }
 
+function Show-ToolkitDryRun {
+    param([string[]]$OptimizationId, $SystemInfo)
+    Show-ToolkitHeader 'ENGINE DRY RUN / LIVE EXECUTION LOCKED'
+    $plan=@(New-ToolkitExecutionPlan -OptimizationId $OptimizationId -SystemInfo $SystemInfo)
+    $results=@(Invoke-ToolkitEngine -Plan $plan -Mode DryRun)
+    if ($results.Count -eq 0) { Write-ToolkitLine ' No settings selected.' Yellow }
+    foreach ($result in $results) {
+        Write-ToolkitLine " [$($result.Status)] $($result.Id)"
+        Write-ToolkitLine " Reason: $($result.Reason)"
+        Write-ToolkitLine " Scope: $($result.Scope) | Permission: $($result.Permission)"
+        Write-ToolkitLine " Risk: $($result.Risk) | Restart after future real change: $($result.RestartRequired)"
+        if ($null -ne $result.Original) { Write-ToolkitLine (' Original: ' + ($result.Original | ConvertTo-Json -Compress)) }
+        if ($null -ne $result.Target) { Write-ToolkitLine (' Target:   ' + ($result.Target | ConvertTo-Json -Compress)) }
+        Write-ToolkitLine " Drawbacks: $($result.Drawbacks)"
+        Write-ToolkitLine " Verification: $($result.Verification)"
+    }
+    Write-ToolkitLine (Get-ToolkitExecutionPolicy).Reason Yellow
+    Wait-ToolkitInput
+}
+
 function Show-ToolkitProfile {
     param($Profile, [array]$Items, $SystemInfo, [string]$HistoryDirectory, [hashtable]$Observations = @{}, [switch]$Comparison)
     $selection = @(New-ToolkitSelection -Profile $Profile -Items $Items -SystemInfo $SystemInfo -Observations $Observations)
@@ -69,9 +89,14 @@ function Show-ToolkitProfile {
         }
         Write-ToolkitLine ''
         Write-ToolkitLine ' [number] Toggle  [I] Information  [R] Reset  [N] Select recommended'
-        Write-ToolkitLine ' [V] Compare/list  [S] Sort  [A] Simulate selected  [B] Back'
+        Write-ToolkitLine ' [V] Compare/list  [S] Sort  [D] Engine dry-run  [A] Simulate  [B] Back'
         $choice = Read-ToolkitInput
         if ($choice -eq 'B') { return }
+        if ($choice -eq 'D') {
+            $ids=@($selection | Where-Object { $_.Selected } | ForEach-Object { $_.Definition.id })
+            Show-ToolkitDryRun -OptimizationId $ids -SystemInfo $SystemInfo
+            continue
+        }
         if ($choice -eq 'V') { $showComparison = -not $showComparison; continue }
         if ($choice -eq 'S') {
             Write-ToolkitLine ' [1] Recommended [2] Risk [3] Category [4] Restart [5] Already configured [6] Unsupported'
@@ -150,7 +175,7 @@ function Show-ToolkitDashboard {
     for ($i=0; $i -lt $Catalog.Profiles.Count; $i++) {
         Write-ToolkitLine (' [{0}] {1}' -f ($i+1), $Catalog.Profiles[$i].title)
     }
-    Write-ToolkitLine ' [O] Optimization comparison (all options)'
+    Write-ToolkitLine ' [O] Optimization comparison (all options)  [D] Engine dry-run'
     Write-ToolkitLine ' [S] System information  [H] Simulation history  [R] Restore status'
     Write-ToolkitLine ' [C] Settings / roadmap  [0] Exit'
 }
@@ -163,6 +188,10 @@ function Start-ToolkitInterface {
         $choice = Read-ToolkitInput
         switch ($choice) {
             '0' { return }
+            'D' {
+                Show-ToolkitDryRun -OptimizationId @('mouse','animations') -SystemInfo $SystemInfo
+                continue
+            }
             'O' {
                 $custom = $Catalog.Profiles | Where-Object { $_.id -eq 'custom' } | Select-Object -First 1
                 Show-ToolkitProfile -Profile $custom -Items $Catalog.Items -SystemInfo $SystemInfo -HistoryDirectory $HistoryDirectory -Observations $Observations -Comparison
@@ -187,8 +216,8 @@ function Start-ToolkitInterface {
                 Show-ToolkitHeader 'SETTINGS / ROADMAP'
                 Write-ToolkitLine " Version: $($Settings.version) | Theme: $($Settings.theme)"
                 Write-ToolkitLine " Optional simulation logs: $HistoryDirectory"
-                Write-ToolkitLine ' Phase 2: read-only detection, recommendations and comparison (current)'
-                Write-ToolkitLine ' Next: real engine, rollback, measurements, distribution.'
+                Write-ToolkitLine ' Phase 3: native operation plans, permission checks and verification (current)'
+                Write-ToolkitLine ' Next: persistent backups and rollback, then measurements and distribution.'
                 Write-ToolkitLine ' Real operations remain unavailable until engine AND rollback are implemented.'
                 Wait-ToolkitInput; continue
             }
@@ -196,7 +225,7 @@ function Start-ToolkitInterface {
         $number = 0
         if ([int]::TryParse($choice, [ref]$number) -and $number -ge 1 -and $number -le $Catalog.Profiles.Count) {
             Show-ToolkitProfile -Profile $Catalog.Profiles[$number-1] -Items $Catalog.Items -SystemInfo $SystemInfo -HistoryDirectory $HistoryDirectory -Observations $Observations
-        } elseif ($choice -notin @('O','S','R','H','C')) {
+        } elseif ($choice -notin @('D','O','S','R','H','C')) {
             Write-ToolkitLine ' Invalid selection.' Yellow; Wait-ToolkitInput
         }
     }

@@ -2,7 +2,7 @@
 
 A Windows 10/11 optimization and debloat toolkit with a black-and-neon-green PowerShell interface.
 
-**Version 0.2.0 — Phase 2: read-only detection, recommendations, and comparisons.** All optimization actions remain simulated. No registry writes, service changes, app removal, power changes, elevation, or real optimization operations are implemented.
+**Version 0.3.0 — Phase 3: optimization engine with dry-run plans and state verification.** All user-facing optimization actions remain simulated or dry-run only. Live execution is locked until Phase 4 provides persistent backups and verified rollback. No Windows settings are changed by this release.
 
 ## Run on Windows
 
@@ -33,7 +33,17 @@ powershell.exe -NoProfile -File .\Start.ps1
 
 With PowerShell 7 installed, use `pwsh` instead of `powershell.exe`. No runtime packages or network requests are needed. Linux/macOS can preview the UI; Windows observations and action selections remain unavailable.
 
-## What's new in Phase 2
+## What's new in Phase 3
+
+- Reviewed operation definitions for mouse acceleration and minimize/restore animation, using documented `SystemParametersInfoW` APIs rather than registry writes.
+- Live read-only API snapshots, explicit original/target values, current-user permission checks and duplicate suppression.
+- State verification checks all modeled values and reports matches, mismatches, or unverified reads. No verification success is claimed for a dry run.
+- **D** on the dashboard previews both operations. **D** inside a profile previews selected options; IDs without an engine implementation are explicitly unsupported.
+- Live Apply requests are rejected before native access. Configuration, elevation, `-WhatIf`, and `-Confirm:$false` cannot unlock them.
+
+Mouse plans preserve both thresholds and do not change pointer speed; animation plans cover minimize/restore animation only. Original snapshots are held in memory, not saved as persistent backups. See [engine design and limitations](Docs/ENGINE.md).
+
+## Phase 2 features retained
 
 - Fixed read-only preference queries for gaming, input, desktop effects, privacy, Widgets visibility, and active hours.
 - Separate **Known**, **Missing**, and **Error** read outcomes; missing values never become guessed defaults.
@@ -48,7 +58,7 @@ Known disabled Game Mode is currently the only automatically selected simulation
 
 Seven profiles cover Balanced Gaming (default), Competitive Gaming, Low-End PC, Windows Debloat, Privacy Focused, System Responsiveness, and Custom.
 
-- Dashboard: **O** opens the comparison of all 18 options; **S** shows hardware and GPU driver details.
+- Dashboard: **D** previews engine operations; **O** opens the comparison of all 18 options; **S** shows hardware and GPU driver details.
 - Inside a profile: **V** switches between comparison and compact list; **S** chooses one of six sorting orders.
 - **I** opens an item's explanation, drawbacks and sources. Numbers refer to the currently displayed order.
 - **N** selects available recommended changes; numbers toggle eligible entries; **R** resets the selection.
@@ -63,6 +73,8 @@ Observations are a startup snapshot. Restart the toolkit after changing Windows 
 powershell.exe -NoProfile -File .\Start.ps1 -Preview
 powershell.exe -NoProfile -File .\Start.ps1 -SystemInfoOnly
 powershell.exe -NoProfile -File .\Start.ps1 -Compare -SortBy Risk
+powershell.exe -NoProfile -File .\Start.ps1 -DryRun
+powershell.exe -NoProfile -File .\Start.ps1 -DryRun -OptimizationId mouse
 ```
 
 `-Compare` returns structured objects when called from an existing PowerShell session:
@@ -71,6 +83,8 @@ powershell.exe -NoProfile -File .\Start.ps1 -Compare -SortBy Risk
 .\Start.ps1 -Compare -SortBy Recommended |
     Format-Table Optimization, CurrentState, Recommendation, Availability, Risk -Wrap
 ```
+
+In an existing PowerShell session, use `.\Start.ps1 -DryRun -OptimizationId mouse,animations` to supply multiple operation IDs. `-DryRun` returns structured plans and never applies them. No administrator prompt is needed; an interactive Windows desktop is required for live API reads. A blocked or unreadable setting is reported without guessing.
 
 Supported sort names: `Recommended`, `Risk`, `Category`, `Restart`, `Applied`, `Unsupported`.
 
@@ -94,8 +108,9 @@ No test framework installation is needed:
 powershell.exe -NoProfile -File .\Tests\Run.Tests.ps1
 powershell.exe -NoProfile -File .\Tests\Recommendation.Tests.ps1
 powershell.exe -NoProfile -File .\Tests\UI.Smoke.ps1
+powershell.exe -NoProfile -File .\Tests\Engine.Tests.ps1
 ```
 
 CI is configured for PowerShell 7 on Linux and Windows, and Windows PowerShell 5.1 on Windows. See [validation notes](Docs/VALIDATION.md) for actual local coverage and limitations.
 
-See [recommendation rules and sources](Docs/RECOMMENDATIONS.md), [architecture](Docs/ARCHITECTURE.md), [roadmap](Docs/ROADMAP.md), and [original requirements](Docs/Requirements/SPECIFICATION.md). Real changes remain gated until both engine and rollback are implemented. Phase 3 requires an instruction to proceed.
+See [recommendation rules and sources](Docs/RECOMMENDATIONS.md), [architecture](Docs/ARCHITECTURE.md), [roadmap](Docs/ROADMAP.md), and [original requirements](Docs/Requirements/SPECIFICATION.md). Real changes remain gated until both engine and rollback are implemented. Phase 4 (persistent backups and restoration) requires an instruction to proceed.

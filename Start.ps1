@@ -4,6 +4,8 @@ param(
     [switch]$Preview,
     [switch]$SystemInfoOnly,
     [switch]$Compare,
+    [switch]$DryRun,
+    [string[]]$OptimizationId = @('mouse','animations'),
     [ValidateSet('Recommended','Risk','Category','Restart','Applied','Unsupported')][string]$SortBy = 'Recommended',
     [string]$DxDiagPath,
     [string]$DataDirectory
@@ -15,12 +17,12 @@ $ErrorActionPreference = 'Stop'
 if ([string]::IsNullOrWhiteSpace($DataDirectory)) {
     $DataDirectory = Join-Path $PSScriptRoot 'Data'
 }
-foreach ($name in @('SystemInfo','Detection','Recommendation','Optimization','Logging','Backup','Restore','Interface')) {
+foreach ($name in @('SystemInfo','Detection','Recommendation','NativeSettings','Engine','Optimization','Logging','Backup','Restore','Interface')) {
     Import-Module (Join-Path $PSScriptRoot "Modules/$name.psm1") -Force -ErrorAction Stop
 }
 $settings = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'Config/Settings.json') -Raw | ConvertFrom-Json
-if ($settings.phase -ne 2 -or $settings.simulationOnly -ne $true) {
-    throw 'This build only supports Phase 2 simulation. Real operations are not implemented.'
+if ($settings.phase -ne 3 -or $settings.simulationOnly -ne $true) {
+    throw 'This build only supports Phase 3 dry-run/simulation. Real operations are not implemented.'
 }
 $catalog = Get-ToolkitCatalog -Root $PSScriptRoot
 # Keep the default profile first, with stable ordering for remaining profiles.
@@ -29,6 +31,11 @@ $system = Get-ToolkitSystemInfo
 $system | Add-Member -NotePropertyName HagsSupport -NotePropertyValue (Get-ToolkitHagsSupport -SystemInfo $system -DxDiagPath $DxDiagPath)
 $observations = Get-ToolkitObservations -SystemInfo $system
 if ($SystemInfoOnly) { $system; return }
+if ($DryRun) {
+    $plan=@(New-ToolkitExecutionPlan -OptimizationId $OptimizationId -SystemInfo $system)
+    Invoke-ToolkitEngine -Plan $plan -Mode DryRun
+    return
+}
 if ($Compare) {
     $custom = $catalog.Profiles | Where-Object { $_.id -eq 'custom' } | Select-Object -First 1
     $selection = @(New-ToolkitSelection -Profile $custom -Items $catalog.Items -SystemInfo $system -Observations $observations)

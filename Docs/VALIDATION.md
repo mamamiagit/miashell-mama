@@ -10,3 +10,12 @@ Phase 2 local validation uses PowerShell 7.4.13 on Linux. Earlier user testing c
 Windows 10/11 registry/CIM behavior, actual dxdiag schema variations, console layout, organization execution policy, and Windows PowerShell 5.1 must still be verified on Windows. The GitHub workflow is configured for all three test scripts on PowerShell 7 (Linux/Windows) and Windows PowerShell 5.1, including a native `-File` startup smoke check. Configuration alone is not evidence of a passing hosted run.
 
 No Windows settings were changed during local development or testing. The toolkit still has no real-change engine or rollback implementation.
+
+
+## Phase 3 validation
+
+The engine suite uses in-memory fixtures to check complete original/target values, preserved mouse thresholds, current-user permission gates, duplicate IDs, already configured state, stale/mismatched observations, invalid/unreadable state and explicit unsupported IDs. Apply is tested with normal, WhatIf, disabled-confirmation, empty and forged plans; all must fail before native reads. The fixed C# bridge is compiled locally and its public surface is inspected to ensure only getters are exposed. Tests do not invoke setters.
+
+The CLI DryRun entry point and both dashboard/profile dry-run screens are exercised. On Linux, actual Windows API reads are unavailable; the UI reports that boundary. Windows API read/write/restore cycles remain unvalidated. No hosted CI success is claimed without observing the run.
+
+Local Phase 3 result: 47 regression assertions, 41 recommendation assertions, 38 engine assertions, and the UI walkthrough passed under PowerShell 7.4.13 on Linux. The actual CLI dry-run returned blocked Windows-only plans on this host, as intended.
