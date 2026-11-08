@@ -21,6 +21,23 @@ foreach ($module in @('SystemInfo','Optimization','Logging','Backup','Restore'))
 }
 $catalog = Get-ToolkitCatalog -Root $root
 Assert-That ($catalog.Profiles.Count -eq 7) 'All seven profiles load'
+Assert-That ($catalog.Items.Count -eq 18) 'Catalog contains 18 individual optimization objects'
+# Reproduce Windows PowerShell 5.1's non-enumerated JSON-array output even on 7.
+function global:ConvertFrom-Json {
+    [CmdletBinding()]
+    param([Parameter(ValueFromPipeline=$true)][string]$InputObject)
+    process {
+        $parsed = Microsoft.PowerShell.Utility\ConvertFrom-Json -InputObject $InputObject
+        Write-Output -NoEnumerate $parsed
+    }
+}
+try {
+    $legacyCatalog = Get-ToolkitCatalog -Root $root
+    Assert-That ($legacyCatalog.Items.Count -eq 18) 'Legacy JSON-array output is flattened correctly'
+    Assert-That ($legacyCatalog.Items[0].id -is [string] -and $legacyCatalog.Items[0].id -eq 'game-mode') 'Legacy catalog entries have scalar IDs'
+    Assert-That ($legacyCatalog.Profiles.Count -eq 7) 'Legacy JSON output preserves all profiles'
+} finally { Remove-Item Function:/ConvertFrom-Json }
+
 $profile = $catalog.Profiles | Where-Object { $_.id -eq 'custom' }
 $windows11 = [pscustomobject]@{ IsWindows=$true; Build=22631 }
 $windows10 = [pscustomobject]@{ IsWindows=$true; Build=19045 }

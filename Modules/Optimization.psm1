@@ -3,7 +3,10 @@
 function Get-ToolkitCatalog {
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$Root)
-    $items = @(Get-Content -LiteralPath (Join-Path $Root 'Config/Optimizations.json') -Raw | ConvertFrom-Json)
+    # Windows PowerShell 5.1 emits a JSON array as a single pipeline object.
+    # Assign first, then normalize: wrapping the pipeline in @() nests that array.
+    $items = Get-Content -LiteralPath (Join-Path $Root 'Config/Optimizations.json') -Raw | ConvertFrom-Json
+    $items = @($items)
     $ids = @{}
     foreach ($item in $items) {
         if ($ids.ContainsKey($item.id)) { throw "Duplicate optimization ID: $($item.id)" }
