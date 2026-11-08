@@ -30,21 +30,11 @@ function Get-ToolkitCatalog {
 function New-ToolkitSelection {
     [CmdletBinding()]
     param([Parameter(Mandatory)]$Profile, [Parameter(Mandatory)][array]$Items,
-          [Parameter(Mandatory)]$SystemInfo)
+          [Parameter(Mandatory)]$SystemInfo, [hashtable]$Observations = @{})
     foreach ($id in $Profile.optimizationIds) {
         $item = $Items | Where-Object { $_.id -eq $id } | Select-Object -First 1
         if ($null -eq $item) { throw "Unknown optimization: $id" }
-        $availability = 'Compatibility not yet validated'
-        if (-not $SystemInfo.IsWindows) { $availability = 'Preview only: non-Windows host' }
-        elseif ($SystemInfo.Build -gt 0 -and $SystemInfo.Build -lt $item.minimumBuild) { $availability = 'Unsupported Windows build' }
-        $eligible = $SystemInfo.IsWindows -and $SystemInfo.Build -ge $item.minimumBuild
-        [pscustomobject]@{
-            Definition = $item
-            Selected = ($eligible -and $item.selectedByDefault -and -not $item.experimental)
-            CanSelect = ($eligible -and -not $item.experimental)
-            CurrentState = 'Not detected in Phase 1'
-            Availability = $availability
-        }
+        Get-ToolkitRecommendation -Definition $item -SystemInfo $SystemInfo -Observations $Observations
     }
 }
 
@@ -54,13 +44,13 @@ function Invoke-ToolkitSimulation {
     # Deliberately accepts data only. No registry, services, app removal or command dispatch.
     foreach ($entry in $Selection) {
         if (-not $entry.Selected) { continue }
-        if (-not $entry.CanSelect -or $entry.Definition.experimental) {
+        if (-not $entry.CanSelect -or $entry.Definition.experimental -or $entry.Availability -ne 'Supported' -or $entry.ReadState -ne 'Known' -or [string]::IsNullOrWhiteSpace($entry.ProposedState)) {
             throw "Cannot simulate unavailable or experimental setting: $($entry.Definition.id)"
         }
         [pscustomobject]@{
             Id = $entry.Definition.id; Title = $entry.Definition.title
             Status = 'SIMULATED'; Before = $entry.CurrentState
-            Proposed = $entry.Definition.recommended; ChangedWindows = $false
+            Proposed = $entry.ProposedState; ChangedWindows = $false
             RestartRequired = $entry.Definition.restartRequired
         }
     }

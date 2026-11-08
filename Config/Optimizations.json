@@ -12,7 +12,10 @@
     "drawbacks": "Benefits vary by game and workload.",
     "compatibility": "Available on supported Windows 10/11 builds.",
     "expectedBenefit": "No measured performance claim. Compare on your own system.",
-    "minimumBuild": 10240
+    "minimumBuild": 15063,
+    "references": [
+      "https://learn.microsoft.com/previous-versions/windows/desktop/gamemode/game-mode-portal"
+    ]
   },
   {
     "id": "game-dvr",
@@ -27,7 +30,10 @@
     "drawbacks": "Background capture will be unavailable if later disabled.",
     "compatibility": "Review whether you use background recording first.",
     "expectedBenefit": "No measured performance claim. Compare on your own system.",
-    "minimumBuild": 10240
+    "minimumBuild": 10240,
+    "references": [
+      "https://learn.microsoft.com/windows/client-management/mdm/policy-csp-applicationmanagement#allowgamedvr"
+    ]
   },
   {
     "id": "hags",
@@ -40,9 +46,13 @@
     "experimental": true,
     "description": "Allows supported GPUs to handle some scheduling work.",
     "drawbacks": "Performance and stability depend on GPU, driver, and game.",
-    "compatibility": "Requires a compatible GPU, driver, and Windows build; not validated in Phase 1.",
+    "compatibility": "Requires Windows build 19041+, compatible GPU and driver. Phase 2 requires matching capability evidence.",
     "expectedBenefit": "No measured performance claim. Compare on your own system.",
-    "minimumBuild": 10240
+    "minimumBuild": 19041,
+    "references": [
+      "https://devblogs.microsoft.com/directx/hardware-accelerated-gpu-scheduling/",
+      "https://learn.microsoft.com/windows-hardware/drivers/ddi/d3dkmdt/ns-d3dkmdt-d3dkmt_wddm_2_7_caps"
+    ]
   },
   {
     "id": "mouse",
@@ -57,7 +67,8 @@
     "drawbacks": "Can change familiar desktop pointer movement; many games use raw input.",
     "compatibility": "Choose according to preference; this is not an FPS optimization.",
     "expectedBenefit": "No measured performance claim. Compare on your own system.",
-    "minimumBuild": 10240
+    "minimumBuild": 10240,
+    "references": []
   },
   {
     "id": "power",
@@ -72,7 +83,8 @@
     "drawbacks": "Higher power plans can increase heat, fan noise, and battery usage.",
     "compatibility": "Laptop and desktop requirements differ.",
     "expectedBenefit": "No measured performance claim. Compare on your own system.",
-    "minimumBuild": 10240
+    "minimumBuild": 10240,
+    "references": []
   },
   {
     "id": "startup",
@@ -87,7 +99,8 @@
     "drawbacks": "Disabling an entry may stop a wanted app from starting.",
     "compatibility": "Each entry will require a separate decision in a future phase.",
     "expectedBenefit": "No measured performance claim. Compare on your own system.",
-    "minimumBuild": 10240
+    "minimumBuild": 10240,
+    "references": []
   },
   {
     "id": "animations",
@@ -102,7 +115,10 @@
     "drawbacks": "Visual preference; does not imply higher game FPS.",
     "compatibility": "Uses supported Windows accessibility and appearance settings.",
     "expectedBenefit": "No measured performance claim. Compare on your own system.",
-    "minimumBuild": 10240
+    "minimumBuild": 10240,
+    "references": [
+      "https://support.microsoft.com/en-us/accessibility/windows/make-it-easier-to-focus-on-tasks"
+    ]
   },
   {
     "id": "transparency",
@@ -117,7 +133,10 @@
     "drawbacks": "Changes appearance; performance impact may be negligible.",
     "compatibility": "Supported appearance setting on Windows 10/11.",
     "expectedBenefit": "No measured performance claim. Compare on your own system.",
-    "minimumBuild": 10240
+    "minimumBuild": 10240,
+    "references": [
+      "https://support.microsoft.com/en-us/accessibility/windows/make-it-easier-to-focus-on-tasks"
+    ]
   },
   {
     "id": "notifications",
@@ -132,7 +151,8 @@
     "drawbacks": "You may miss desired alerts.",
     "compatibility": "Supported notification settings vary by Windows version.",
     "expectedBenefit": "No measured performance claim. Compare on your own system.",
-    "minimumBuild": 10240
+    "minimumBuild": 10240,
+    "references": []
   },
   {
     "id": "active-hours",
@@ -147,7 +167,8 @@
     "drawbacks": "Updates remain enabled and may still require restarts.",
     "compatibility": "Never disables Windows Update.",
     "expectedBenefit": "No measured performance claim. Compare on your own system.",
-    "minimumBuild": 10240
+    "minimumBuild": 10240,
+    "references": []
   },
   {
     "id": "advertising",
@@ -162,7 +183,10 @@
     "drawbacks": "Ads may remain but be less personalized.",
     "compatibility": "Supported Windows privacy settings only.",
     "expectedBenefit": "No measured performance claim. Compare on your own system.",
-    "minimumBuild": 10240
+    "minimumBuild": 10240,
+    "references": [
+      "https://support.microsoft.com/en-us/windows/privacy/general-privacy-settings-in-windows"
+    ]
   },
   {
     "id": "suggestions",
@@ -177,7 +201,10 @@
     "drawbacks": "Some discovery tips will no longer appear.",
     "compatibility": "Availability differs by Windows edition and build.",
     "expectedBenefit": "No measured performance claim. Compare on your own system.",
-    "minimumBuild": 10240
+    "minimumBuild": 10240,
+    "references": [
+      "https://learn.microsoft.com/windows/client-management/mdm/policy-csp-experience#allowtailoredexperienceswithdiagnosticdata"
+    ]
   },
   {
     "id": "diagnostics",
@@ -192,7 +219,10 @@
     "drawbacks": "Required diagnostics remain; some feedback features may change.",
     "compatibility": "Does not disable critical diagnostic services.",
     "expectedBenefit": "No measured performance claim. Compare on your own system.",
-    "minimumBuild": 10240
+    "minimumBuild": 10240,
+    "references": [
+      "https://learn.microsoft.com/windows/privacy/configure-windows-diagnostic-data-in-your-organization"
+    ]
   },
   {
     "id": "apps",
@@ -207,7 +237,8 @@
     "drawbacks": "Some removed apps need reinstalling; dependencies must be preserved.",
     "compatibility": "Store, Security, Edge, update components and dependencies are protected.",
     "expectedBenefit": "No measured performance claim. Compare on your own system.",
-    "minimumBuild": 10240
+    "minimumBuild": 10240,
+    "references": []
   },
   {
     "id": "widgets",
@@ -222,7 +253,8 @@
     "drawbacks": "Widgets and associated content may be unavailable.",
     "compatibility": "Windows 11 only; disabled on unsupported systems.",
     "expectedBenefit": "No measured performance claim. Compare on your own system.",
-    "minimumBuild": 22000
+    "minimumBuild": 22000,
+    "references": []
   },
   {
     "id": "usb",
@@ -237,7 +269,8 @@
     "drawbacks": "Disabling it can increase power consumption without improving performance.",
     "compatibility": "Leave default unless diagnosing a specific device issue.",
     "expectedBenefit": "No measured performance claim. Compare on your own system.",
-    "minimumBuild": 10240
+    "minimumBuild": 10240,
+    "references": []
   },
   {
     "id": "pcie",
@@ -252,7 +285,8 @@
     "drawbacks": "Changing it can increase heat and power usage.",
     "compatibility": "Leave default unless controlled testing supports a change.",
     "expectedBenefit": "No measured performance claim. Compare on your own system.",
-    "minimumBuild": 10240
+    "minimumBuild": 10240,
+    "references": []
   },
   {
     "id": "cpu-priority",
@@ -267,6 +301,7 @@
     "drawbacks": "Can reduce stability or cause workload regressions.",
     "compatibility": "Informational only; unsupported modifications are not implemented.",
     "expectedBenefit": "No measured performance claim. Compare on your own system.",
-    "minimumBuild": 10240
+    "minimumBuild": 10240,
+    "references": []
   }
 ]

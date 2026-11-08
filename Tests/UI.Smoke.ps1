@@ -4,7 +4,7 @@ param()
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
-foreach ($name in @('SystemInfo','Optimization','Logging','Backup','Restore','Interface')) {
+foreach ($name in @('SystemInfo','Detection','Recommendation','Optimization','Logging','Backup','Restore','Interface')) {
     Import-Module (Join-Path $root "Modules/$name.psm1") -Force
 }
 $catalog = Get-ToolkitCatalog -Root $root
@@ -14,10 +14,11 @@ $settings = Get-Content -LiteralPath (Join-Path $root 'Config/Settings.json') -R
 $fixture = [pscustomobject]@{
     IsWindows=$true; Build=22631; OS='Windows 11 fixture'; CPU='Fixture CPU'
     GPU='Fixture GPU'; RAM='16 GB'; Storage='Fixture disk'; PowerPlan='Balanced'
-    Administrator=$false; GamingSettings='Not detected in Phase 1'; Warnings=@()
+    Administrator=$false; GamingSettings='Fixture preferences'; Warnings=@()
 }
+$observations = @{ 'game-mode' = [pscustomobject]@{State='Known';Value=0;Source='Fixture';Detail='Test fixture'} }
 $script:answers = New-Object 'System.Collections.Generic.Queue[string]'
-foreach ($answer in @('1','A','NO','I','1','','999','','A','SIMULATE','Y','','1','R','B','H','','R','','C','','S','','INVALID','','0')) {
+foreach ($answer in @('1','A','NO','I','1','','999','','A','SIMULATE','Y','','1','R','V','S','2','I','1','','N','B','O','S','6','V','B','H','','R','','C','','S','','INVALID','','0')) {
     $script:answers.Enqueue($answer)
 }
 function global:Read-Host {
@@ -27,9 +28,9 @@ function global:Read-Host {
 }
 $temp = Join-Path ([IO.Path]::GetTempPath()) ('toolkit-ui-' + [guid]::NewGuid().ToString('N'))
 try {
-    $output = (& { Start-ToolkitInterface -Catalog $catalog -SystemInfo $fixture -Settings $settings -HistoryDirectory $temp } 6>&1 | Out-String)
+    $output = (& { Start-ToolkitInterface -Catalog $catalog -SystemInfo $fixture -Settings $settings -HistoryDirectory $temp -Observations $observations } 6>&1 | Out-String)
     if ($script:answers.Count -ne 0) { throw 'UI exited before consuming the expected navigation sequence.' }
-    foreach ($expected in @('SIMULATION PREVIEW','[SIMULATED]','Invalid selection.','Invalid selection','SIMULATION HISTORY','RESTORATION','SETTINGS / ROADMAP','SYSTEM INFORMATION')) {
+    foreach ($expected in @('SIMULATION PREVIEW','[SIMULATED]','Invalid selection.','Invalid selection','SIMULATION HISTORY','RESTORATION','SETTINGS / ROADMAP','SYSTEM INFORMATION','OPTIMIZATION COMPARISON','Sort: Risk','Sort: Unsupported')) {
         if (-not $output.Contains($expected)) { throw "Missing UI output: $expected" }
     }
     $records = @(Get-ToolkitSimulationHistory -Directory $temp)

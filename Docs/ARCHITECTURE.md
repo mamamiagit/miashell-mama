@@ -1,14 +1,15 @@
 # Architecture
 
-`Start.ps1` loads settings and modules, validates the simulation phase, loads declarative catalogs, queries hardware and starts the interface. `-Preview` and `-SystemInfoOnly` exit without interactive prompts or data writes.
+`Start.ps1` validates simulation-only Phase 2 configuration, loads reviewed modules and catalog data, gathers a read-only startup snapshot, and opens the UI. Preview, system info, and comparison modes exit without prompts or history writes. JSON remains data only.
 
-- **Interface:** renders the dashboard, numbered navigation, checklists, detailed explanations, confirmation preview and simulation history. ASCII borders work in basic terminals; green text uses host color APIs.
-- **SystemInfo:** read-only CIM queries for Windows version/build, CPU, GPU, RAM, disks and power plan. Independent queries degrade gracefully. No fake Windows hardware on other platforms. Gaming-setting reads are deferred.
-- **Optimization:** validates catalog references, creates a session selection, blocks known unsupported/experimental options and emits `SIMULATED` results with `ChangedWindows=false`. This module has no real-change dispatcher.
-- **Logging:** writes only explicitly requested simulation records. It is not a backup module. Invalid history JSON is skipped with a warning.
-- **Backup / Restore:** status-only APIs that explicitly report unavailability; future implementations belong in Phase 4.
-- **Config / Profiles:** data only. Catalog IDs map to reviewed code in a future engine, never executable JSON.
+- **SystemInfo:** independent CIM queries for Windows client/build, CPU, GPU/driver versions, RAM, disks, active power plan, and portable chassis. Errors become warnings. No fabricated Windows data on other platforms.
+- **Detection:** fixed registry reads return Known/Missing/Error plus source and caveat. Missing values do not imply defaults. Optional dxdiag XML is parsed with DTD/external entities disabled and a document-size limit; imported capability evidence must match detected adapters/drivers.
+- **Recommendation:** pure rules consume catalog data, hardware metadata, and observations. They distinguish stored preferences, unsupported builds, unknown capability, policy review, individual preferences and actionable recommendations. No commands are read from JSON. Comparison sorting preserves object identity and user selections.
+- **Optimization:** validates IDs/profiles, builds recommendation-backed selections, and emits simulation records. It rejects selected unsupported, unknown, experimental, already configured, or entries without an explicit simulation target. There is no real execution dispatcher.
+- **Interface:** dashboard, profiles, compact/comparison views, all six sort modes, detail screens, simulation confirmation and optional history.
+- **Logging:** explicitly requested simulation records only; not system backups.
+- **Backup / Restore:** status-only APIs. Real restoration is unavailable until Phase 4.
 
-Minimum-build checks in Phase 1 are only preliminary filters, not full feature compatibility validation. Suggested options come from the specification and are not dynamically inferred recommendations. Current setting values remain explicitly unknown.
+Windows PowerShell 5.1 compatibility: script-relative defaults resolve after binding; top-level JSON arrays are assigned before normalization to avoid nested arrays. Sources use UTF-8 with BOM and avoid PowerShell 7-only syntax.
 
-PowerShell sources use UTF-8 with BOM so Windows PowerShell 5.1 reads them consistently. The project avoids PowerShell 7-only syntax and external modules. Use strict mode and terminating errors for configuration failures; hardware discovery and optional log writes expose recoverable failures in the UI.
+The recommendation module intentionally accepts observations as data so fixtures can test access errors, missing values and policy precedence without modifying Windows. The registry adapter is tested with mocked reads; real Windows provider behavior still requires Windows validation. Test guards detect listed mutation commands and dynamic dispatch, but are not a sandbox for arbitrary future code.

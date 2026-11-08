@@ -1,13 +1,12 @@
 # Validation record
 
-Local validation performed on November 7, 2026 with PowerShell 7.4.13 on Linux:
+Phase 2 local validation uses PowerShell 7.4.13 on Linux. Earlier user testing confirmed that the patched Phase 1 dashboard launches in Windows PowerShell after fixing parameter default timing and JSON-array enumeration. That does not establish Windows validation of the new Phase 2 readers.
 
-- All PowerShell source files parsed successfully.
-- Dependency-free regression suite passed: catalog/profile loading, known Windows build exclusions, non-Windows blocking, experimental-setting rejection, simulation output, optional log round trip, and unavailable backup/restore APIs.
-- Scripted UI smoke test passed with a clearly labeled Windows 11 fixture: profile navigation, cancellation, information, invalid input, simulation confirmation, selection reset, optional history, restoration status, settings and exit.
-- `Start.ps1 -Preview` rendered the real non-Windows dashboard successfully.
-- `Start.ps1 -SystemInfoOnly` returned honest unavailable Windows fields on Linux.
+- Regression suite parses every source and tests catalog/profile loading, legacy non-enumerated JSON arrays, startup from a different working directory, comparison output, build gates, experimental rejection, simulation records, history, and listed-mutation/dynamic-dispatch guards.
+- Recommendation suite uses fixtures and mocked registry reads for enabled/disabled/missing/error states, administrative policy precedence, capture/background-recording distinction, active hours, laptop tradeoffs, all sort modes, matching/stale/multi-GPU HAGS XML, unsupported driver models, malformed XML and prohibited external entities.
+- UI smoke test uses a Windows fixture to exercise navigation, cancellation, information, sorting, comparison view, select-recommended, reset, simulation confirmation, optional history, restoration status, settings and exit.
+- Non-interactive dashboard and comparison modes are run against the actual Linux host; Windows fields remain unavailable and no Windows action is selected.
 
-Windows 10/11 CIM queries, console appearance, execution policy behavior, and Windows PowerShell 5.1 have not been tested locally. A GitHub Actions workflow is configured for PowerShell 7 on Linux and Windows plus Windows PowerShell 5.1; workflow configuration is not evidence that those hosted jobs have passed.
+Windows 10/11 registry/CIM behavior, actual dxdiag schema variations, console layout, organization execution policy, and Windows PowerShell 5.1 must still be verified on Windows. The GitHub workflow is configured for all three test scripts on PowerShell 7 (Linux/Windows) and Windows PowerShell 5.1, including a native `-File` startup smoke check. Configuration alone is not evidence of a passing hosted run.
 
-The fixture exercises the UI and compatibility data paths without invoking actual Windows configuration changes. The forbidden-command check is a regression guard against listed mutation commands, not a security sandbox for arbitrary future code.
+No Windows settings were changed during local development or testing. The toolkit still has no real-change engine or rollback implementation.

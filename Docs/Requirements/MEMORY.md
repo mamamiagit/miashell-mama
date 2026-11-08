@@ -22,3 +22,7 @@ Updated development order:
 6. Distribution: releases, verified installer, offline execution, updates, documentation.
 
 Implementation scope when later requested: Phase 1 only. Do not proceed to Phase 2 without instruction. The current request was to retain specifications, not start implementation. Screenshots mentioned in the source documents were not supplied with this request.
+
+## Current scope update
+
+The user explicitly authorized Phase 2 (recommendation engine) after confirming the patched Phase 1 works on Windows. Version 0.2.0 implements read-only observation, conservative recommendations and sortable comparisons. All Windows changes remain simulated; Phase 3 is not authorized by that instruction. See Docs/RECOMMENDATIONS.md (relative to repository root) for implemented rules and limits.

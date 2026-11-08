@@ -8,7 +8,7 @@ function Get-ToolkitSystemInfo {
         IsWindows = $onWindows; OS = [Environment]::OSVersion.VersionString
         Build = 0; CPU = 'Unavailable'; GPU = 'Unavailable'; RAM = 'Unavailable'
         Storage = 'Unavailable'; PowerPlan = 'Unavailable'; Administrator = $false
-        GamingSettings = 'Not detected in Phase 1'; Warnings = @()
+        GamingSettings = 'Read-only preference observations available in comparisons'; GPUDetails = @(); ProductType = 0; IsPortable = $false; Warnings = @()
     }
     if (-not $onWindows) {
         $info.Warnings += 'Non-Windows host: UI preview only; Windows hardware data unavailable.'
@@ -18,12 +18,21 @@ function Get-ToolkitSystemInfo {
         $os = Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction Stop
         $info.OS = $os.Caption
         $info.Build = [int]$os.BuildNumber
+        $info.ProductType = [int]$os.ProductType
         $info.RAM = '{0:N1} GB' -f ($os.TotalVisibleMemorySize / 1MB)
     } catch { $info.Warnings += 'Windows version or memory query failed.' }
     try { $info.CPU = (@(Get-CimInstance Win32_Processor -ErrorAction Stop).Name -join ', ') }
     catch { $info.Warnings += 'CPU query failed.' }
-    try { $info.GPU = (@(Get-CimInstance Win32_VideoController -ErrorAction Stop).Name -join ', ') }
+    try {
+        $adapters = @(Get-CimInstance Win32_VideoController -ErrorAction Stop)
+        $info.GPU = ($adapters.Name -join ', ')
+        $info.GPUDetails = @($adapters | Select-Object Name, DriverVersion, PNPDeviceID)
+    }
     catch { $info.Warnings += 'GPU query failed.' }
+    try {
+        $enclosures = @(Get-CimInstance Win32_SystemEnclosure -ErrorAction Stop)
+        $info.IsPortable = @($enclosures.ChassisTypes | Where-Object { $_ -in @(8,9,10,11,14,30,31,32) }).Count -gt 0
+    } catch { $info.Warnings += 'Portable chassis detection failed.' }
     try {
         $info.Storage = (@(Get-CimInstance Win32_DiskDrive -ErrorAction Stop | ForEach-Object {
             '{0} ({1:N0} GB)' -f $_.Model, ($_.Size / 1GB)

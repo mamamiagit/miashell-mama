@@ -6,7 +6,7 @@ function Save-ToolkitSimulation {
           [Parameter(Mandatory)][string]$ProfileId,
           [Parameter(Mandatory)][AllowEmptyCollection()][array]$Results)
     if (@($Results | Where-Object { $_.ChangedWindows -ne $false -or $_.Status -ne 'SIMULATED' }).Count -gt 0) {
-        throw 'Only simulation records may be saved in Phase 1.'
+        throw 'Only simulation records may be saved in Phase 2.'
     }
     $null = New-Item -ItemType Directory -Path $Directory -Force -ErrorAction Stop
     $path = Join-Path $Directory ('simulation-{0}.json' -f [guid]::NewGuid().ToString('N'))

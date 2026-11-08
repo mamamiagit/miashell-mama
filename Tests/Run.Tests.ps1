@@ -16,7 +16,7 @@ foreach ($file in Get-ChildItem $root -Recurse -File | Where-Object { $_.Extensi
     $null = [Management.Automation.Language.Parser]::ParseFile($file.FullName, [ref]$tokens, [ref]$errors)
     Assert-That (@($errors).Count -eq 0) "PowerShell parses: $($file.Name)"
 }
-foreach ($module in @('SystemInfo','Optimization','Logging','Backup','Restore')) {
+foreach ($module in @('SystemInfo','Detection','Recommendation','Optimization','Logging','Backup','Restore')) {
     Import-Module (Join-Path $root "Modules/$module.psm1") -Force
 }
 $catalog = Get-ToolkitCatalog -Root $root
@@ -42,7 +42,8 @@ $profile = $catalog.Profiles | Where-Object { $_.id -eq 'custom' }
 $windows11 = [pscustomobject]@{ IsWindows=$true; Build=22631 }
 $windows10 = [pscustomobject]@{ IsWindows=$true; Build=19045 }
 $linux = [pscustomobject]@{ IsWindows=$false; Build=0 }
-$selection = @(New-ToolkitSelection -Profile $profile -Items $catalog.Items -SystemInfo $windows11)
+$observations = @{ 'game-mode' = [pscustomobject]@{State='Known';Value=0;Source='Fixture';Detail='Test fixture'} }
+$selection = @(New-ToolkitSelection -Profile $profile -Items $catalog.Items -SystemInfo $windows11 -Observations $observations)
 Assert-That (@($selection | Where-Object { $_.Definition.experimental -and ($_.Selected -or $_.CanSelect) }).Count -eq 0) 'Experimental settings cannot be selected'
 $old = @(New-ToolkitSelection -Profile $profile -Items $catalog.Items -SystemInfo $windows10)
 $widgets = $old | Where-Object { $_.Definition.id -eq 'widgets' }
@@ -76,10 +77,12 @@ $null = New-Item -ItemType Directory -Path $startupTemp
 Push-Location $startupTemp
 try {
     $dashboard = (& (Join-Path $root 'Start.ps1') -Preview 6>&1 | Out-String)
-    Assert-That ($dashboard.Contains('DASHBOARD / v0.1.0')) 'Entry point resolves default data directory after parameter binding'
+    Assert-That ($dashboard.Contains('DASHBOARD / v0.2.0')) 'Entry point resolves default data directory after parameter binding'
     $dashboard = (& (Join-Path $root 'Start.ps1') -Preview -DataDirectory (Join-Path $startupTemp 'custom') 6>&1 | Out-String)
     Assert-That ($dashboard.Contains('SIMULATION ONLY')) 'Entry point accepts explicit data directory'
     Assert-That (-not (Test-Path -LiteralPath (Join-Path $startupTemp 'custom'))) 'Preview does not create a data directory'
+    $comparison = @(& (Join-Path $root 'Start.ps1') -Compare -SortBy Risk)
+    Assert-That ($comparison.Count -eq 18 -and $comparison[0].Risk -eq 'Low') 'Real comparison entry point returns all entries sorted by risk'
 } finally {
     Pop-Location
     Remove-Item -LiteralPath $startupTemp -Recurse -Force

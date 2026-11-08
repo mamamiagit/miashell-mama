@@ -12,7 +12,7 @@ function Show-ToolkitHeader {
     Write-ToolkitLine '|                 WINDOWS PERFORMANCE TOOLKIT                      |'
     Write-ToolkitLine '+------------------------------------------------------------------+'
     Write-ToolkitLine " $Title"
-    Write-ToolkitLine ' PHASE 1 / SIMULATION ONLY / NO WINDOWS SETTINGS ARE CHANGED' Yellow
+    Write-ToolkitLine ' PHASE 2 / SIMULATION ONLY / NO WINDOWS SETTINGS ARE CHANGED' Yellow
     Write-ToolkitLine ''
 }
 
@@ -31,35 +31,62 @@ function Show-ToolkitInformation {
     Show-ToolkitHeader $d.title
     foreach ($row in @(
         "Description: $($d.description)", "Current: $($Entry.CurrentState)",
-        "Suggested option: $($d.recommended)", "Risk: $($d.risk)",
+        "Recommendation: $($Entry.Recommendation)", "Optional simulation target: $($Entry.ProposedState)", "Risk: $($d.risk)",
         "Restart after a real change: $($d.restartRequired)",
         "Compatibility: $($d.compatibility)", "Availability: $($Entry.Availability)",
+        "Read state: $($Entry.ReadState)", "Reason: $($Entry.Reason)", "Source: $($Entry.Source)",
         "Evidence: $($d.expectedBenefit)", "Drawbacks: $($d.drawbacks)",
-        'Apply / restore / verification: not implemented in Phase 1.'
+        'Apply / restore / verification: unavailable until the real engine and rollback system are ready.'
     )) { Write-ToolkitLine " $row" }
+    foreach ($reference in $d.references) { Write-ToolkitLine " Reference: $reference" DarkGray }
     if ($d.experimental) { Write-ToolkitLine ' [WARN] Experimental/informational: selection is disabled.' Yellow }
     Wait-ToolkitInput
 }
 
 function Show-ToolkitProfile {
-    param($Profile, [array]$Items, $SystemInfo, [string]$HistoryDirectory)
-    $selection = @(New-ToolkitSelection -Profile $Profile -Items $Items -SystemInfo $SystemInfo)
+    param($Profile, [array]$Items, $SystemInfo, [string]$HistoryDirectory, [hashtable]$Observations = @{}, [switch]$Comparison)
+    $selection = @(New-ToolkitSelection -Profile $Profile -Items $Items -SystemInfo $SystemInfo -Observations $Observations)
+    $showComparison = [bool]$Comparison
+    $sortBy = 'Recommended'
     while ($true) {
+        $selection = @(Get-ToolkitComparison -Selection $selection -SortBy $sortBy)
         Show-ToolkitHeader $Profile.title
         Write-ToolkitLine " $($Profile.description)"
-        Write-ToolkitLine ' Suggested options are specification notes, not hardware-validated recommendations.' DarkGray
+        Write-ToolkitLine ' Read-only snapshot: stored preferences may differ from effective Windows policy.' DarkGray
+        Write-ToolkitLine " Sort: $sortBy | Real changes and restore remain unavailable."
+        if ($showComparison) { Write-ToolkitLine ' OPTIMIZATION COMPARISON' Cyan }
         for ($i = 0; $i -lt $selection.Count; $i++) {
             $entry = $selection[$i]
             $mark = if ($entry.Selected) { 'ON ' } else { 'OFF' }
-            $flag = if ($entry.Definition.experimental) { ' [EXPERIMENTAL]' } elseif (-not $entry.CanSelect) { ' [UNAVAILABLE]' } else { '' }
+            $flag = if ($entry.AlreadyApplied) { ' [ALREADY CONFIGURED]' } elseif ($entry.Definition.experimental) { ' [EXPERIMENTAL]' } elseif ($entry.Availability -eq 'Unsupported') { ' [UNSUPPORTED]' } elseif ($entry.Availability -eq 'Unknown') { ' [UNKNOWN]' } elseif (-not $entry.CanSelect) { ' [REVIEW]' } else { '' }
             Write-ToolkitLine (' [{0:00}] [{1}] {2} / {3}{4}' -f ($i+1), $mark, $entry.Definition.title, $entry.Definition.risk, $flag)
+            if ($showComparison) {
+                Write-ToolkitLine "     CURRENT: $($entry.CurrentState)" DarkGray
+                Write-ToolkitLine "     RECOMMENDED: $($entry.Recommendation)"
+                Write-ToolkitLine "     COMPATIBILITY: $($entry.Availability) | RESTART (real change): $($entry.Definition.restartRequired)"
+                Write-ToolkitLine "     WHY: $($entry.Reason)" DarkGray
+            }
         }
         Write-ToolkitLine ''
-        Write-ToolkitLine ' [number] Toggle  [I] Information  [R] Reset selection  [A] Simulate selected  [B] Back'
+        Write-ToolkitLine ' [number] Toggle  [I] Information  [R] Reset  [N] Select recommended'
+        Write-ToolkitLine ' [V] Compare/list  [S] Sort  [A] Simulate selected  [B] Back'
         $choice = Read-ToolkitInput
         if ($choice -eq 'B') { return }
+        if ($choice -eq 'V') { $showComparison = -not $showComparison; continue }
+        if ($choice -eq 'S') {
+            Write-ToolkitLine ' [1] Recommended [2] Risk [3] Category [4] Restart [5] Already configured [6] Unsupported'
+            $sortChoice = Read-ToolkitInput 'Sort order'
+            $sorts = @{ '1'='Recommended'; '2'='Risk'; '3'='Category'; '4'='Restart'; '5'='Applied'; '6'='Unsupported' }
+            if ($sorts.ContainsKey($sortChoice)) { $sortBy=$sorts[$sortChoice] }
+            else { Write-ToolkitLine ' Invalid sort choice.' Yellow; Wait-ToolkitInput }
+            continue
+        }
+        if ($choice -eq 'N') {
+            foreach ($entry in $selection) { $entry.Selected = $entry.CanSelect -and $entry.RecommendedChange -and -not $entry.Definition.experimental }
+            continue
+        }
         if ($choice -eq 'R') {
-            $selection = @(New-ToolkitSelection -Profile $Profile -Items $Items -SystemInfo $SystemInfo)
+            $selection = @(New-ToolkitSelection -Profile $Profile -Items $Items -SystemInfo $SystemInfo -Observations $Observations)
             continue
         }
         if ($choice -eq 'I') {
@@ -74,7 +101,7 @@ function Show-ToolkitProfile {
             if ($chosen.Count -eq 0) { Write-ToolkitLine ' No settings selected.' Yellow; Wait-ToolkitInput; continue }
             Write-ToolkitLine ' SIMULATION PREVIEW' Cyan
             foreach ($entry in $chosen) {
-                Write-ToolkitLine " $($entry.Definition.title): $($entry.CurrentState) -> $($entry.Definition.recommended)"
+                Write-ToolkitLine " $($entry.Definition.title): $($entry.CurrentState) -> $($entry.ProposedState)"
             }
             if ((Read-ToolkitInput 'Type SIMULATE to confirm') -ne 'SIMULATE') { continue }
             $results = @(Invoke-ToolkitSimulation -Selection $selection)
@@ -104,6 +131,10 @@ function Show-ToolkitSystemInfo {
     foreach ($name in @('OS','Build','CPU','GPU','RAM','Storage','PowerPlan','Administrator','GamingSettings')) {
         Write-ToolkitLine (' {0,-16} {1}' -f $name, $SystemInfo.$name)
     }
+    if ($null -ne $SystemInfo.PSObject.Properties['GPUDetails']) {
+        foreach ($gpu in $SystemInfo.GPUDetails) { Write-ToolkitLine " GPU driver: $($gpu.Name) / $($gpu.DriverVersion)" }
+    }
+    if ($null -ne $SystemInfo.PSObject.Properties['HagsSupport']) { Write-ToolkitLine " HAGS capability: $($SystemInfo.HagsSupport.State) / $($SystemInfo.HagsSupport.Detail)" }
     foreach ($warning in $SystemInfo.Warnings) { Write-ToolkitLine " [WARN] $warning" Yellow }
 }
 
@@ -119,18 +150,24 @@ function Show-ToolkitDashboard {
     for ($i=0; $i -lt $Catalog.Profiles.Count; $i++) {
         Write-ToolkitLine (' [{0}] {1}' -f ($i+1), $Catalog.Profiles[$i].title)
     }
+    Write-ToolkitLine ' [O] Optimization comparison (all options)'
     Write-ToolkitLine ' [S] System information  [H] Simulation history  [R] Restore status'
     Write-ToolkitLine ' [C] Settings / roadmap  [0] Exit'
 }
 
 function Start-ToolkitInterface {
     [CmdletBinding()]
-    param($Catalog, $SystemInfo, $Settings, [string]$HistoryDirectory)
+    param($Catalog, $SystemInfo, $Settings, [string]$HistoryDirectory, [hashtable]$Observations = @{})
     while ($true) {
         Show-ToolkitDashboard -Catalog $Catalog -SystemInfo $SystemInfo -Version $Settings.version
         $choice = Read-ToolkitInput
         switch ($choice) {
             '0' { return }
+            'O' {
+                $custom = $Catalog.Profiles | Where-Object { $_.id -eq 'custom' } | Select-Object -First 1
+                Show-ToolkitProfile -Profile $custom -Items $Catalog.Items -SystemInfo $SystemInfo -HistoryDirectory $HistoryDirectory -Observations $Observations -Comparison
+                continue
+            }
             'S' { Show-ToolkitSystemInfo $SystemInfo; Wait-ToolkitInput; continue }
             'R' {
                 Show-ToolkitHeader 'RESTORATION'
@@ -150,16 +187,16 @@ function Start-ToolkitInterface {
                 Show-ToolkitHeader 'SETTINGS / ROADMAP'
                 Write-ToolkitLine " Version: $($Settings.version) | Theme: $($Settings.theme)"
                 Write-ToolkitLine " Optional simulation logs: $HistoryDirectory"
-                Write-ToolkitLine ' Phase 1: terminal UI and simulation (current)'
-                Write-ToolkitLine ' Next: recommendation engine; then real engine, rollback, measurements, distribution.'
+                Write-ToolkitLine ' Phase 2: read-only detection, recommendations and comparison (current)'
+                Write-ToolkitLine ' Next: real engine, rollback, measurements, distribution.'
                 Write-ToolkitLine ' Real operations remain unavailable until engine AND rollback are implemented.'
                 Wait-ToolkitInput; continue
             }
         }
         $number = 0
         if ([int]::TryParse($choice, [ref]$number) -and $number -ge 1 -and $number -le $Catalog.Profiles.Count) {
-            Show-ToolkitProfile -Profile $Catalog.Profiles[$number-1] -Items $Catalog.Items -SystemInfo $SystemInfo -HistoryDirectory $HistoryDirectory
-        } elseif ($choice -notin @('S','R','H','C')) {
+            Show-ToolkitProfile -Profile $Catalog.Profiles[$number-1] -Items $Catalog.Items -SystemInfo $SystemInfo -HistoryDirectory $HistoryDirectory -Observations $Observations
+        } elseif ($choice -notin @('O','S','R','H','C')) {
             Write-ToolkitLine ' Invalid selection.' Yellow; Wait-ToolkitInput
         }
     }
