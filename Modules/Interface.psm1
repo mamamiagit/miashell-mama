@@ -12,7 +12,7 @@ function Show-ToolkitHeader {
     Write-ToolkitLine '|                 WINDOWS PERFORMANCE TOOLKIT                      |'
     Write-ToolkitLine '+------------------------------------------------------------------+'
     Write-ToolkitLine " $Title"
-    Write-ToolkitLine ' PHASE 4 / DEFAULT: DRY-RUN / LIVE CHANGES REQUIRE VALIDATION + CONFIRMATION' Yellow
+    Write-ToolkitLine ' PHASE 5 / DEFAULT: DRY-RUN / LIVE CHANGES REQUIRE VALIDATION + CONFIRMATION' Yellow
     Write-ToolkitLine ''
 }
 
@@ -171,6 +171,74 @@ function Show-ToolkitSystemInfo {
     foreach ($warning in $SystemInfo.Warnings) { Write-ToolkitLine " [WARN] $warning" Yellow }
 }
 
+
+function Read-ToolkitText {
+    param([string]$Prompt)
+    $answer=Read-Host " $Prompt >"
+    if ($null -eq $answer) { throw 'Input closed.' }
+    $answer.Trim()
+}
+
+function Show-ToolkitPerformance {
+    param([string]$Directory)
+    $lastReport=$null
+    while ($true) {
+        Show-ToolkitHeader 'PERFORMANCE COMPARISON'
+        Write-ToolkitLine ' CPU / RAM snapshots are not proof of FPS improvement.' Yellow
+        Write-ToolkitLine ' [1] Capture Before  [2] Capture After  [3] List captures'
+        Write-ToolkitLine ' [4] Compare captures  [5] Import benchmark summary  [6] Export last comparison'
+        Write-ToolkitLine ' [B] Back'
+        $choice=Read-ToolkitInput
+        if ($choice -eq 'B') { return }
+        try {
+            switch ($choice) {
+                {$_ -in @('1','2')} {
+                    $label=if ($choice -eq '1') {'Before'} else {'After'}
+                    Write-ToolkitLine ' Capturing three CPU samples, one second apart, and current system/configuration data...'
+                    $snapshot=Get-ToolkitPerformanceSnapshot -Label $label
+                    $saved=Save-ToolkitPerformanceSnapshot -Directory $Directory -Snapshot $snapshot
+                    Write-ToolkitLine " Saved $label capture: $($saved.Id)"
+                    $snapshot.Metrics | Format-Table Id,Value,Unit,Status -AutoSize | Out-Host
+                }
+                '3' {
+                    Get-ToolkitPerformanceHistory -Directory $Directory | Select-Object Id,Label,CapturedUtc,Origin | Format-Table -AutoSize | Out-Host
+                }
+                '4' {
+                    $beforeId=(Read-ToolkitText 'Before measurement ID').ToLowerInvariant()
+                    $afterId=(Read-ToolkitText 'After measurement ID').ToLowerInvariant()
+                    $before=Read-ToolkitPerformanceSnapshot -Directory $Directory -Id $beforeId
+                    $after=Read-ToolkitPerformanceSnapshot -Directory $Directory -Id $afterId
+                    $lastReport=Compare-ToolkitPerformance -Before $before -After $after
+                    @($lastReport.Metrics)+@($lastReport.Configuration)+@($lastReport.Benchmarks) | Format-Table Category,Metric,Before,After,Delta,Unit,Status -Wrap | Out-Host
+                    foreach ($warning in $lastReport.Warnings) { Write-ToolkitLine " [NOTE] $warning" Yellow }
+                }
+                '5' {
+                    $id=(Read-ToolkitText 'Measurement ID to attach results to').ToLowerInvariant()
+                    $path=Read-ToolkitText 'Path to normalized benchmark summary JSON/CSV (no surrounding quotes)'
+                    $original=Read-ToolkitPerformanceSnapshot -Directory $Directory -Id $id
+                    $updated=Add-ToolkitBenchmarkToSnapshot -Snapshot $original -Path $path
+                    $saved=Save-ToolkitPerformanceSnapshot -Directory $Directory -Snapshot $updated
+                    Write-ToolkitLine " Saved derived measurement: $($saved.Id). Use this NEW ID when comparing imported results."
+                }
+                '6' {
+                    if ($null -eq $lastReport) { Write-ToolkitLine ' Compare two captures first.' Yellow }
+                    else {
+                        $folder=Join-Path $Directory 'Reports'
+                        $stem='comparison-'+[DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss')+'-'+[guid]::NewGuid().ToString('N')
+                        foreach ($format in @('JSON','Markdown','CSV')) {
+                            $extension=@{JSON='json';Markdown='md';CSV='csv'}[$format]
+                            $path=Export-ToolkitPerformanceReport -Report $lastReport -Path (Join-Path $folder ($stem+'.'+$extension)) -Format $format
+                            Write-ToolkitLine " Saved: $path"
+                        }
+                    }
+                }
+                default { Write-ToolkitLine ' Invalid selection.' Yellow }
+            }
+        } catch { Write-ToolkitLine " [WARN] $($_.Exception.Message)" Yellow }
+        Wait-ToolkitInput
+    }
+}
+
 function Show-ToolkitDashboard {
     param($Catalog, $SystemInfo, [string]$Version, [switch]$NoClear)
     Show-ToolkitHeader "DASHBOARD / v$Version" -NoClear:$NoClear
@@ -187,6 +255,7 @@ function Show-ToolkitDashboard {
     Write-ToolkitLine ' [S] System information  [H] Simulation history  [R] Session history / restore'
     Write-ToolkitLine ' [T] Validate native apply/restore on this PC (requires confirmation)'
     Write-ToolkitLine ' [L] Backed-up live apply: mouse + animations (requires confirmation)'
+    Write-ToolkitLine ' [P] Performance captures, comparisons and reports'
     Write-ToolkitLine ' [C] Settings / roadmap  [0] Exit'
 }
 
@@ -198,6 +267,7 @@ function Start-ToolkitInterface {
         $choice = Read-ToolkitInput
         switch ($choice) {
             '0' { return }
+            'P' { Show-ToolkitPerformance -Directory $HistoryDirectory; continue }
             'D' {
                 Show-ToolkitDryRun -OptimizationId @('mouse','animations') -SystemInfo $SystemInfo
                 continue
@@ -251,8 +321,8 @@ function Start-ToolkitInterface {
                 Show-ToolkitHeader 'SETTINGS / ROADMAP'
                 Write-ToolkitLine " Version: $($Settings.version) | Theme: $($Settings.theme)"
                 Write-ToolkitLine " Optional simulation logs: $HistoryDirectory"
-                Write-ToolkitLine ' Phase 4: durable sessions, backed-up apply and verified restoration (current)'
-                Write-ToolkitLine ' Next: performance measurements, then distribution.'
+                Write-ToolkitLine ' Phase 5: baseline measurements, benchmark imports and reports (current)'
+                Write-ToolkitLine ' Next: release packaging and distribution.'
                 Write-ToolkitLine ' Native apply requires successful local validation; default mode remains dry-run.'
                 Wait-ToolkitInput; continue
             }
@@ -260,7 +330,7 @@ function Start-ToolkitInterface {
         $number = 0
         if ([int]::TryParse($choice, [ref]$number) -and $number -ge 1 -and $number -le $Catalog.Profiles.Count) {
             Show-ToolkitProfile -Profile $Catalog.Profiles[$number-1] -Items $Catalog.Items -SystemInfo $SystemInfo -HistoryDirectory $HistoryDirectory -Observations $Observations
-        } elseif ($choice -notin @('D','L','T','O','S','R','H','C')) {
+        } elseif ($choice -notin @('P','D','L','T','O','S','R','H','C')) {
             Write-ToolkitLine ' Invalid selection.' Yellow; Wait-ToolkitInput
         }
     }

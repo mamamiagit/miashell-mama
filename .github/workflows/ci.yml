@@ -20,6 +20,7 @@ jobs:
           ./Tests/Recommendation.Tests.ps1
           ./Tests/Engine.Tests.ps1
           ./Tests/Transactions.Tests.ps1
+          ./Tests/Performance.Tests.ps1
       - name: Dashboard preview
         shell: pwsh
         run: ./Start.ps1 -Preview
@@ -32,5 +33,6 @@ jobs:
           ./Tests/Recommendation.Tests.ps1
           ./Tests/Engine.Tests.ps1
           ./Tests/Transactions.Tests.ps1
+          ./Tests/Performance.Tests.ps1
           powershell.exe -NoProfile -File ./Start.ps1 -Preview
           if ($LASTEXITCODE -ne 0) { throw 'Windows PowerShell entry point failed.' }

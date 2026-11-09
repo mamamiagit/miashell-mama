@@ -16,7 +16,7 @@ foreach ($file in Get-ChildItem $root -Recurse -File | Where-Object { $_.Extensi
     $null = [Management.Automation.Language.Parser]::ParseFile($file.FullName, [ref]$tokens, [ref]$errors)
     Assert-That (@($errors).Count -eq 0) "PowerShell parses: $($file.Name)"
 }
-foreach ($module in @('SystemInfo','Detection','Recommendation','NativeSettings','Engine','Optimization','Logging','Backup','Transactions','Restore')) {
+foreach ($module in @('SystemInfo','Detection','Recommendation','NativeSettings','Engine','Optimization','Logging','Backup','Transactions','Restore','Benchmark','Performance','Reports')) {
     Import-Module (Join-Path $root "Modules/$module.psm1") -Force
 }
 $catalog = Get-ToolkitCatalog -Root $root
@@ -77,7 +77,7 @@ $null = New-Item -ItemType Directory -Path $startupTemp
 Push-Location $startupTemp
 try {
     $dashboard = (& (Join-Path $root 'Start.ps1') -Preview 6>&1 | Out-String)
-    Assert-That ($dashboard.Contains('DASHBOARD / v0.4.0')) 'Entry point resolves default data directory after parameter binding'
+    Assert-That ($dashboard.Contains('DASHBOARD / v0.5.0')) 'Entry point resolves default data directory after parameter binding'
     $dashboard = (& (Join-Path $root 'Start.ps1') -Preview -DataDirectory (Join-Path $startupTemp 'custom') 6>&1 | Out-String)
     Assert-That ($dashboard.Contains('DEFAULT: DRY-RUN')) 'Entry point accepts explicit data directory'
     Assert-That (-not (Test-Path -LiteralPath (Join-Path $startupTemp 'custom'))) 'Preview does not create a data directory'

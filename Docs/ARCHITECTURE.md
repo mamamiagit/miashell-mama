@@ -1,6 +1,6 @@
 # Architecture
 
-`Start.ps1` validates dry-run-default Phase 4 configuration, loads reviewed modules and catalog data, gathers a read-only startup snapshot, and opens the UI. Preview, system info, and comparison modes exit without prompts or history writes. JSON remains data only.
+`Start.ps1` validates dry-run-default Phase 5 configuration, loads reviewed modules and catalog data, gathers a read-only startup snapshot, and opens the UI. Preview, system info, and comparison modes exit without prompts or history writes. JSON remains data only.
 
 - **SystemInfo:** independent CIM queries for Windows client/build, CPU, GPU/driver versions, RAM, disks, active power plan, and portable chassis. Errors become warnings. No fabricated Windows data on other platforms.
 - **Detection:** fixed registry reads return Known/Missing/Error plus source and caveat. Missing values do not imply defaults. Optional dxdiag XML is parsed with DTD/external entities disabled and a document-size limit; imported capability evidence must match detected adapters/drivers.
@@ -17,3 +17,6 @@
 Windows PowerShell 5.1 compatibility: script-relative defaults resolve after binding; top-level JSON arrays are assigned before normalization to avoid nested arrays. Sources use UTF-8 with BOM and avoid PowerShell 7-only syntax.
 
 The recommendation module intentionally accepts observations as data so fixtures can test access errors, missing values and policy precedence without modifying Windows. The registry adapter is tested with mocked reads; real Windows provider behavior still requires Windows validation. Test guards detect listed mutation commands and dynamic dispatch, but are not a sandbox for arbitrary future code.
+
+
+Phase 5 adds Benchmark (strict normalized-summary import and invariant numeric parsing), Performance (read-only collection, schema-validated immutable snapshots and history), and Reports (descriptive resource/configuration/imported-benchmark comparison and standalone exports). Measurement records live separately from recovery sessions and cannot unlock native execution. The performance menu never calls the native apply/restore dispatcher.

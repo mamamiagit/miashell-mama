@@ -1,0 +1,2 @@
+schemaVersion,game,scenario,resolution,qualityPreset,tool,toolVersion,durationSeconds,runCount,averageFps,onePercentLowFps,meanFrameTimeMs
+1,Replace game,Replace scenario,Replace resolution,Replace preset,Replace tool,Replace version,60,1,,,

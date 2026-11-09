@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "game": "Replace with game name",
+  "scenario": "Replace with fixed replay or benchmark scene",
+  "resolution": "Replace with resolution",
+  "qualityPreset": "Replace with settings preset",
+  "tool": "Replace with external benchmark tool",
+  "toolVersion": "Replace with tool version",
+  "durationSeconds": 60,
+  "runCount": 1,
+  "averageFps": null,
+  "onePercentLowFps": null,
+  "meanFrameTimeMs": null
+}
