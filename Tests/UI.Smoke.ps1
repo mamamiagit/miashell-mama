@@ -4,7 +4,7 @@ param()
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
-foreach ($name in @('SystemInfo','Detection','Recommendation','NativeSettings','Engine','Optimization','Logging','Backup','Restore','Interface')) {
+foreach ($name in @('SystemInfo','Detection','Recommendation','NativeSettings','Engine','Optimization','Logging','Backup','Transactions','Restore','Interface')) {
     Import-Module (Join-Path $root "Modules/$name.psm1") -Force
 }
 $catalog = Get-ToolkitCatalog -Root $root
@@ -30,7 +30,7 @@ $temp = Join-Path ([IO.Path]::GetTempPath()) ('toolkit-ui-' + [guid]::NewGuid().
 try {
     $output = (& { Start-ToolkitInterface -Catalog $catalog -SystemInfo $fixture -Settings $settings -HistoryDirectory $temp -Observations $observations } 6>&1 | Out-String)
     if ($script:answers.Count -ne 0) { throw 'UI exited before consuming the expected navigation sequence.' }
-    foreach ($expected in @('SIMULATION PREVIEW','[SIMULATED]','Invalid selection.','Invalid selection','SIMULATION HISTORY','RESTORATION','SETTINGS / ROADMAP','SYSTEM INFORMATION','OPTIMIZATION COMPARISON','Sort: Risk','Sort: Unsupported','ENGINE DRY RUN / LIVE EXECUTION LOCKED')) {
+    foreach ($expected in @('SIMULATION PREVIEW','[SIMULATED]','Invalid selection.','Invalid selection','SIMULATION HISTORY','RESTORATION','SETTINGS / ROADMAP','SYSTEM INFORMATION','OPTIMIZATION COMPARISON','Sort: Risk','Sort: Unsupported','ENGINE DRY RUN / NO CHANGES')) {
         if (-not $output.Contains($expected)) { throw "Missing UI output: $expected" }
     }
     $records = @(Get-ToolkitSimulationHistory -Directory $temp)

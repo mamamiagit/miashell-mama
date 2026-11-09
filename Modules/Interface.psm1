@@ -12,7 +12,7 @@ function Show-ToolkitHeader {
     Write-ToolkitLine '|                 WINDOWS PERFORMANCE TOOLKIT                      |'
     Write-ToolkitLine '+------------------------------------------------------------------+'
     Write-ToolkitLine " $Title"
-    Write-ToolkitLine ' PHASE 3 / SIMULATION ONLY / NO WINDOWS SETTINGS ARE CHANGED' Yellow
+    Write-ToolkitLine ' PHASE 4 / DEFAULT: DRY-RUN / LIVE CHANGES REQUIRE VALIDATION + CONFIRMATION' Yellow
     Write-ToolkitLine ''
 }
 
@@ -36,7 +36,7 @@ function Show-ToolkitInformation {
         "Compatibility: $($d.compatibility)", "Availability: $($Entry.Availability)",
         "Read state: $($Entry.ReadState)", "Reason: $($Entry.Reason)", "Source: $($Entry.Source)",
         "Evidence: $($d.expectedBenefit)", "Drawbacks: $($d.drawbacks)",
-        'Apply / restore / verification: unavailable until the real engine and rollback system are ready.'
+        'Mouse/animation engine operations support backed-up apply and restore after local validation; other items remain simulations.'
     )) { Write-ToolkitLine " $row" }
     foreach ($reference in $d.references) { Write-ToolkitLine " Reference: $reference" DarkGray }
     if ($d.experimental) { Write-ToolkitLine ' [WARN] Experimental/informational: selection is disabled.' Yellow }
@@ -45,7 +45,7 @@ function Show-ToolkitInformation {
 
 function Show-ToolkitDryRun {
     param([string[]]$OptimizationId, $SystemInfo)
-    Show-ToolkitHeader 'ENGINE DRY RUN / LIVE EXECUTION LOCKED'
+    Show-ToolkitHeader 'ENGINE DRY RUN / NO CHANGES'
     $plan=@(New-ToolkitExecutionPlan -OptimizationId $OptimizationId -SystemInfo $SystemInfo)
     $results=@(Invoke-ToolkitEngine -Plan $plan -Mode DryRun)
     if ($results.Count -eq 0) { Write-ToolkitLine ' No settings selected.' Yellow }
@@ -73,7 +73,7 @@ function Show-ToolkitProfile {
         Show-ToolkitHeader $Profile.title
         Write-ToolkitLine " $($Profile.description)"
         Write-ToolkitLine ' Read-only snapshot: stored preferences may differ from effective Windows policy.' DarkGray
-        Write-ToolkitLine " Sort: $sortBy | Real changes and restore remain unavailable."
+        Write-ToolkitLine " Sort: $sortBy | Live apply requires local validation and confirmation."
         if ($showComparison) { Write-ToolkitLine ' OPTIMIZATION COMPARISON' Cyan }
         for ($i = 0; $i -lt $selection.Count; $i++) {
             $entry = $selection[$i]
@@ -89,9 +89,17 @@ function Show-ToolkitProfile {
         }
         Write-ToolkitLine ''
         Write-ToolkitLine ' [number] Toggle  [I] Information  [R] Reset  [N] Select recommended'
-        Write-ToolkitLine ' [V] Compare/list  [S] Sort  [D] Engine dry-run  [A] Simulate  [B] Back'
+        Write-ToolkitLine ' [V] Compare/list  [S] Sort  [D] Engine dry-run  [A] Simulate
+ [L] Live apply selected engine settings  [B] Back'
         $choice = Read-ToolkitInput
         if ($choice -eq 'B') { return }
+        if ($choice -eq 'L') {
+            $ids=@($selection | Where-Object { $_.Selected } | ForEach-Object { $_.Definition.id })
+            if ($ids.Count -eq 0) { Write-ToolkitLine ' No settings selected.' Yellow; Wait-ToolkitInput; continue }
+            try { Invoke-ToolkitSession -Directory $HistoryDirectory -OptimizationId $ids | Format-List | Out-Host }
+            catch { Write-ToolkitLine " [WARN] $($_.Exception.Message)" Yellow }
+            Wait-ToolkitInput; continue
+        }
         if ($choice -eq 'D') {
             $ids=@($selection | Where-Object { $_.Selected } | ForEach-Object { $_.Definition.id })
             Show-ToolkitDryRun -OptimizationId $ids -SystemInfo $SystemInfo
@@ -176,7 +184,9 @@ function Show-ToolkitDashboard {
         Write-ToolkitLine (' [{0}] {1}' -f ($i+1), $Catalog.Profiles[$i].title)
     }
     Write-ToolkitLine ' [O] Optimization comparison (all options)  [D] Engine dry-run'
-    Write-ToolkitLine ' [S] System information  [H] Simulation history  [R] Restore status'
+    Write-ToolkitLine ' [S] System information  [H] Simulation history  [R] Session history / restore'
+    Write-ToolkitLine ' [T] Validate native apply/restore on this PC (requires confirmation)'
+    Write-ToolkitLine ' [L] Backed-up live apply: mouse + animations (requires confirmation)'
     Write-ToolkitLine ' [C] Settings / roadmap  [0] Exit'
 }
 
@@ -198,9 +208,34 @@ function Start-ToolkitInterface {
                 continue
             }
             'S' { Show-ToolkitSystemInfo $SystemInfo; Wait-ToolkitInput; continue }
+            'L' {
+                try { Invoke-ToolkitSession -Directory $HistoryDirectory | Format-List | Out-Host }
+                catch { Write-ToolkitLine " [WARN] $($_.Exception.Message)" Yellow }
+                Wait-ToolkitInput; continue
+            }
+            'T' {
+                try { Invoke-ToolkitSession -Directory $HistoryDirectory -ValidateNative | Format-List | Out-Host }
+                catch { Write-ToolkitLine " [WARN] $($_.Exception.Message)" Yellow }
+                Wait-ToolkitInput; continue
+            }
             'R' {
-                Show-ToolkitHeader 'RESTORATION'
+                Show-ToolkitHeader 'RESTORATION / SESSION HISTORY'
                 Write-ToolkitLine (Get-ToolkitRestoreStatus).Message Yellow
+                try {
+                    $sessions=@(Get-ToolkitSessionHistory -Directory $HistoryDirectory -Context (Get-ToolkitContext))
+                    foreach ($session in $sessions) { Write-ToolkitLine " $($session.SessionId) | $($session.Status) | $($session.CreatedUtc)" }
+                    if ($sessions.Count -eq 0) { Write-ToolkitLine ' No native session backups.' }
+                    else {
+                        $id=Read-ToolkitInput 'Session ID to restore, or B to go back'
+                        if ($id -ne 'B') {
+                            $id=$id.ToLowerInvariant()
+                            Get-ToolkitRestorePreview -Directory $HistoryDirectory -SessionId $id | Format-List | Out-Host
+                            $setting=Read-ToolkitInput 'Setting ID (mouse/animations), or ALL for full rollback'
+                            if ($setting -eq 'ALL') { Restore-ToolkitSession -Directory $HistoryDirectory -SessionId $id | Format-List | Out-Host }
+                            else { Restore-ToolkitSession -Directory $HistoryDirectory -SessionId $id -OptimizationId $setting.ToLowerInvariant() | Format-List | Out-Host }
+                        }
+                    }
+                } catch { Write-ToolkitLine " [WARN] $($_.Exception.Message)" Yellow }
                 Wait-ToolkitInput; continue
             }
             'H' {
@@ -216,16 +251,16 @@ function Start-ToolkitInterface {
                 Show-ToolkitHeader 'SETTINGS / ROADMAP'
                 Write-ToolkitLine " Version: $($Settings.version) | Theme: $($Settings.theme)"
                 Write-ToolkitLine " Optional simulation logs: $HistoryDirectory"
-                Write-ToolkitLine ' Phase 3: native operation plans, permission checks and verification (current)'
-                Write-ToolkitLine ' Next: persistent backups and rollback, then measurements and distribution.'
-                Write-ToolkitLine ' Real operations remain unavailable until engine AND rollback are implemented.'
+                Write-ToolkitLine ' Phase 4: durable sessions, backed-up apply and verified restoration (current)'
+                Write-ToolkitLine ' Next: performance measurements, then distribution.'
+                Write-ToolkitLine ' Native apply requires successful local validation; default mode remains dry-run.'
                 Wait-ToolkitInput; continue
             }
         }
         $number = 0
         if ([int]::TryParse($choice, [ref]$number) -and $number -ge 1 -and $number -le $Catalog.Profiles.Count) {
             Show-ToolkitProfile -Profile $Catalog.Profiles[$number-1] -Items $Catalog.Items -SystemInfo $SystemInfo -HistoryDirectory $HistoryDirectory -Observations $Observations
-        } elseif ($choice -notin @('D','O','S','R','H','C')) {
+        } elseif ($choice -notin @('D','L','T','O','S','R','H','C')) {
             Write-ToolkitLine ' Invalid selection.' Yellow; Wait-ToolkitInput
         }
     }

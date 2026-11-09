@@ -1,41 +1,17 @@
-# Phase 3 optimization engine
+# Optimization engine, Phase 4
 
-This release implements reviewed operation definitions, native state reads, target planning, permission checks, dry-run results and state verification. Native setters are implemented internally for the two modeled preferences, but there is deliberately no public native write route or live dispatcher. All Apply requests are locked pending Phase 4. No real apply/restore cycle has been validated.
+The reviewed native operations remain `mouse` (SPI_GETMOUSE / SPI_SETMOUSE) and `animations` (SPI_GETANIMATION / SPI_SETANIMATION). Targets disable only acceleration or minimize/restore animation; exact original thresholds and values are preserved for restoration. Mouse pointer speed is not modified. These are user preferences, not measured FPS improvements.
 
-## Operations
+[Microsoft SystemParametersInfoW documentation](https://learn.microsoft.com/windows/win32/api/winuser/nf-winuser-systemparametersinfow) defines the mouse array, SPI actions, return errors and persistence/notification flags. [ANIMATIONINFO documentation](https://learn.microsoft.com/windows/win32/api/winuser/ns-winuser-animationinfo) defines the animation structure. The fixed C# bridge exposes public getters and internal setters. The journaled native write wrapper invokes only those fixed setters after reading a valid, identity-bound durable intent. Profiles cannot supply code or native action IDs.
 
-| ID | Read / future write | Target | Original state needed for restoration |
-| --- | --- | --- | --- |
-| mouse | SPI_GETMOUSE / SPI_SETMOUSE | Acceleration = 0; preserve both thresholds | Threshold1, Threshold2, Acceleration |
-| animations | SPI_GETANIMATION / SPI_SETANIMATION | MinAnimate = 0 | MinAnimate |
+## Separation of responsibilities
 
-These are optional user preferences, not measured gaming performance improvements. Mouse pointer speed is a separate parameter and is never changed by this operation. Games using raw input may ignore desktop acceleration. MinAnimate refers to minimize/restore animation, not every Windows effect.
+- `New-ToolkitExecutionPlan`: read and validate current values, normalize/deduplicate IDs, derive fixed targets and detect already configured state.
+- `Invoke-ToolkitEngine`: dry-run rendering of plans. Bare-plan Apply is always refused; plan objects do not authorize native writes.
+- `Test-ToolkitOperationState`: compare every modeled field; MATCH, MISMATCH or UNVERIFIED. This can check originals before apply, targets after apply, and originals after restore.
+- `Invoke-ToolkitSession`: confirmed, locked, backup-first transaction; normal native apply also needs current local validation.
+- `Restore-ToolkitSession`: confirmed, conflict-aware per-setting or complete rollback, independent of validation-marker expiry.
 
-[Microsoft SystemParametersInfoW documentation](https://learn.microsoft.com/windows/win32/api/winuser/nf-winuser-systemparametersinfow) defines the mouse array, SPI actions, persistence/notification flags and error return. [ANIMATIONINFO documentation](https://learn.microsoft.com/windows/win32/api/winuser/ns-winuser-animationinfo) defines structure size and animation state. Setter implementations use SPIF_UPDATEINIFILE | SPIF_SENDCHANGE, free native buffers in finally blocks, and throw on API failure. The bridge is fixed C# source; JSON cannot supply native actions, paths, or executable code.
+See [backup/recovery design](BACKUP-RESTORE.md) for persistence, interruption handling, failure states, locking, validation and limitations. A successful dry run never claims an applied or restored change. Fixtures are labeled as fixtures and cannot unlock native execution.
 
-## Planning and verification
-
-1. Validate Windows client/build and interactive desktop prerequisites. Current-user operations require no elevation. Server, unknown product type, non-Windows and service/session-zero contexts are blocked.
-2. Normalize IDs and remove duplicates. Any operation without a reviewed implementation is UNSUPPORTED.
-3. Read original values through the Windows API, not from registry preferences. Failures remain WARN; no defaults are invented.
-4. Validate and copy every modeled field. Mouse thresholds are nonnegative 32-bit integers, acceleration is 0–2, MinAnimate is 0–1. Build a fixed target. Already configured state yields SKIP.
-5. Produce DRYRUN output with original/target state, permission, risk, drawbacks, restart requirements and the live-execution lock. Nothing is saved or changed automatically.
-
-`Test-ToolkitOperationState` compares every modeled field to an explicitly expected value. A known match yields MATCH; a value difference yields MISMATCH; unreadable or invalid state yields UNVERIFIED. It can compare a fresh observation to the original snapshot to detect a stale plan, or to the target for future post-write verification. A match is a state comparison, not evidence of a performance improvement.
-
-The test-only optional StateSnapshot parameter is clearly labeled caller-supplied fixture evidence, never a live read. Original values are copied to avoid later caller mutation. Plan objects are data, not authority to execute code.
-
-## Capability boundary
-
-`Invoke-ToolkitEngine` defaults to DryRun. Mode Apply fails before inspecting caller-supplied plan entries or touching native code. No configuration field, elevated shell, WhatIf option or confirmation override enables writes. Native getter methods are public; setters are internal and have no public dispatcher in this build. This is a guard against accidental use through the toolkit, not a sandbox against someone modifying source or invoking private members through reflection.
-
-Registry mutation, power management, app removal, security settings, Windows Update and service changes are outside this engine. Other catalog items remain comparisons/simulations and are not falsely presented as implemented operations.
-
-## Phase 4 requirements before enabling Apply
-
-- Persist validated originals successfully before any mutation; distinguish absent values for future registry-based operations.
-- Bind plans and backups to the current Windows user, session and machine; re-read original state immediately before applying and reject stale plans.
-- Require a complete review and confirmation; never treat configuration or imported plans as executable authority.
-- Write through reviewed dispatch only; verify results immediately and record failures honestly, including partial success and interrupted sessions.
-- Implement individual restore and session rollback using the exact originals, with verification and concurrency handling.
-- Test native read/write/restore cycles on real Windows 10/11 before exposing live changes. Linux bridge compilation and fixture tests do not validate Windows behavior.
+Windows client/build and interactive-session checks are required. Current-user operations need no administrator elevation. Security, app removal, service changes, undocumented registry writes, Windows Update and power management remain outside the native engine. Other catalog entries remain recommendations/simulations.

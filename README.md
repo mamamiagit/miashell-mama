@@ -2,7 +2,7 @@
 
 A Windows 10/11 optimization and debloat toolkit with a black-and-neon-green PowerShell interface.
 
-**Version 0.3.0 — Phase 3: optimization engine with dry-run plans and state verification.** All user-facing optimization actions remain simulated or dry-run only. Live execution is locked until Phase 4 provides persistent backups and verified rollback. No Windows settings are changed by this release.
+**Version 0.4.0 — Phase 4: persistent backups and restoration.** Dry-run remains the default. Two reviewed native operations (mouse acceleration and minimize/restore animation) support confirmed, backed-up apply and restore after a successful validation round trip on your Windows user/machine. Other catalog options remain comparisons/simulations.
 
 ## Run on Windows
 
@@ -33,15 +33,44 @@ powershell.exe -NoProfile -File .\Start.ps1
 
 With PowerShell 7 installed, use `pwsh` instead of `powershell.exe`. No runtime packages or network requests are needed. Linux/macOS can preview the UI; Windows observations and action selections remain unavailable.
 
-## What's new in Phase 3
+## What's new in Phase 4
 
-- Reviewed operation definitions for mouse acceleration and minimize/restore animation, using documented `SystemParametersInfoW` APIs rather than registry writes.
-- Live read-only API snapshots, explicit original/target values, current-user permission checks and duplicate suppression.
-- State verification checks all modeled values and reports matches, mismatches, or unverified reads. No verification success is claimed for a dry run.
-- **D** on the dashboard previews both operations. **D** inside a profile previews selected options; IDs without an engine implementation are explicitly unsupported.
-- Live Apply requests are rejected before native access. Configuration, elevation, `-WhatIf`, and `-Confirm:$false` cannot unlock them.
+- Timestamped session records with original values, intended targets, checksums, write-ahead history and atomic file replacement.
+- Per-setting restore and full session rollback, with post-write verification and automatic rollback when an apply fails.
+- Recovery of interrupted sessions; protection against stale plans, conflicting external changes, corrupt backups, and concurrent toolkit operations.
+- An explicit local native validation step before normal live use. Fixture tests do not unlock Windows writes.
+- Backups in `%LOCALAPPDATA%\WindowsPerformanceToolkit` by default, so downloading a new ZIP does not discard recovery data. Keep this folder.
 
-Mouse plans preserve both thresholds and do not change pointer speed; animation plans cover minimize/restore animation only. Original snapshots are held in memory, not saved as persistent backups. See [engine design and limitations](Docs/ENGINE.md).
+**Only mouse acceleration and minimize/restore animation support live changes.** The mouse operation preserves both thresholds and pointer speed. No registry edits, app removal, security changes, service changes or Windows Update changes are performed.
+
+### First-time native validation
+
+After reviewing the dry run, choose **T** on the dashboard, or run:
+
+```powershell
+powershell.exe -NoProfile -File .\Start.ps1 -ValidateNative
+```
+
+This asks for confirmation, saves originals, temporarily sets both supported preferences, verifies them, restores the originals, and verifies restoration. It genuinely calls the Windows setting APIs; it is not a simulation. Leave the toolkit open until it finishes. A validation marker is created only after both restorations succeed. It is specific to the current Windows user/machine, OS build and implementation, and expires after 30 days. If validation fails or is interrupted, use **R** to inspect/recover the saved session before trying again.
+
+### Apply and restore
+
+Choose **L** on the dashboard to review and apply the two supported settings, or use a single operation:
+
+```powershell
+powershell.exe -NoProfile -File .\Start.ps1 -Apply -OptimizationId mouse
+powershell.exe -NoProfile -File .\Start.ps1 -ListSessions
+# Replace SESSION_ID with the 32-character ID shown in the result/history:
+powershell.exe -NoProfile -File .\Start.ps1 -RestoreSession SESSION_ID
+# Or restore only one setting:
+powershell.exe -NoProfile -File .\Start.ps1 -RestoreSession SESSION_ID -RestoreId mouse
+```
+
+Live apply and restore require confirmation. Recovery remains available without a current validation marker. Already configured operations are skipped. A partial restore or conflict is not reported as complete recovery. The toolkit never forces a preference over a conflicting external change; inspect Windows Settings and session history instead. New mutations are blocked while a session is unfinished or an overlapping setting remains applied in another session.
+
+The optional `-CreateRestorePoint` flag on `-Apply` attempts a Windows restore point only when supported and already elevated, then verifies it exists. It never elevates automatically. Unsupported, rate-limited or failed restore points produce a warning; the toolkit still requires its own durable backups. No restore point is assumed successful.
+
+See [backup and recovery details](Docs/BACKUP-RESTORE.md) and [engine design](Docs/ENGINE.md). Native Windows behavior is not established by the Linux fixture suite; local validation is required before normal use.
 
 ## Phase 2 features retained
 
@@ -62,10 +91,10 @@ Seven profiles cover Balanced Gaming (default), Competitive Gaming, Low-End PC, 
 - Inside a profile: **V** switches between comparison and compact list; **S** chooses one of six sorting orders.
 - **I** opens an item's explanation, drawbacks and sources. Numbers refer to the currently displayed order.
 - **N** selects available recommended changes; numbers toggle eligible entries; **R** resets the selection.
-- **A** previews selected options and asks you to type `SIMULATE`. It never applies a Windows change.
-- Optional simulation logs appear under **H**. Logs are not backups; actual backup/restore is unavailable.
+- **A** previews selected options and asks you to type `SIMULATE`. It never applies a Windows change. **L** applies only reviewed engine IDs after validation, backup and confirmation.
+- Optional simulation logs appear under **H**. **R** lists native session backups and restores one setting or a full session. Simulation logs are not backups.
 
-Observations are a startup snapshot. Restart the toolkit after changing Windows Settings or drivers. Current custom selections last only for that profile visit. Logs go to ignored `Data/` by default; use `-DataDirectory` to choose another location.
+Observations are a startup snapshot. Restart the toolkit after changing Windows Settings or drivers. Current custom selections last only for that profile visit. On Windows, logs and backups use `%LOCALAPPDATA%\WindowsPerformanceToolkit`; non-Windows previews use `Data/`. Use `-DataDirectory` consistently if selecting a different store. Do not switch stores while settings remain applied, and do not delete recovery data with an old downloaded source folder.
 
 ## Non-interactive output
 
@@ -109,8 +138,9 @@ powershell.exe -NoProfile -File .\Tests\Run.Tests.ps1
 powershell.exe -NoProfile -File .\Tests\Recommendation.Tests.ps1
 powershell.exe -NoProfile -File .\Tests\UI.Smoke.ps1
 powershell.exe -NoProfile -File .\Tests\Engine.Tests.ps1
+powershell.exe -NoProfile -File .\Tests\Transactions.Tests.ps1
 ```
 
 CI is configured for PowerShell 7 on Linux and Windows, and Windows PowerShell 5.1 on Windows. See [validation notes](Docs/VALIDATION.md) for actual local coverage and limitations.
 
-See [recommendation rules and sources](Docs/RECOMMENDATIONS.md), [architecture](Docs/ARCHITECTURE.md), [roadmap](Docs/ROADMAP.md), and [original requirements](Docs/Requirements/SPECIFICATION.md). Real changes remain gated until both engine and rollback are implemented. Phase 4 (persistent backups and restoration) requires an instruction to proceed.
+See [recommendation rules and sources](Docs/RECOMMENDATIONS.md), [architecture](Docs/ARCHITECTURE.md), [roadmap](Docs/ROADMAP.md), and [original requirements](Docs/Requirements/SPECIFICATION.md). Native changes require the local validation and backup workflow above. Phase 5 (performance comparisons) requires an instruction to proceed.

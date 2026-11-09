@@ -4,7 +4,7 @@ param()
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot -Parent
-foreach ($name in @('NativeSettings','Engine')) { Import-Module (Join-Path $root "Modules/$name.psm1") -Force }
+foreach ($name in @('NativeSettings','Engine','Backup','Transactions','Restore')) { Import-Module (Join-Path $root "Modules/$name.psm1") -Force }
 $count=0
 function Assert-That([bool]$Condition,[string]$Message) {
     if (-not $Condition) { throw "FAIL: $Message" }
@@ -17,7 +17,7 @@ $snapshot=@{
     animations=(State ([pscustomobject]@{MinAnimate=1}))
 }
 $policy=Get-ToolkitExecutionPolicy
-Assert-That (-not $policy.LiveChangesEnabled -and -not $policy.RollbackAvailable) 'Execution policy locks real writes pending rollback'
+Assert-That (-not $policy.LiveChangesEnabled -and $policy.RollbackAvailable) 'Execution policy requires machine-local validation before native writes'
 Assert-That ((Get-ToolkitOperationPermission -SystemInfo $win).Allowed) 'Current-user operations do not require elevation'
 $service=$win.PSObject.Copy(); $service.InteractiveSession=$false
 Assert-That (-not (Get-ToolkitOperationPermission -SystemInfo $service).Allowed) 'Session-zero/service operations are blocked'
@@ -85,18 +85,18 @@ try {
                 'ForgedPlan' { $null=Invoke-ToolkitEngine -Plan @([pscustomobject]@{LiveChangesEnabled=$true}) -Mode Apply }
                 default { $null=Invoke-ToolkitEngine -Plan $plans -Mode Apply }
             }
-        } catch { $rejected=$_.Exception.Message.Contains('persistent backups') }
-        Assert-That $rejected "Apply rejects $variant request with rollback requirement"
+        } catch { $rejected=$_.Exception.Message.Contains('Invoke-ToolkitSession') }
+        Assert-That $rejected "Bare-plan Apply rejects $variant request"
     }
     Assert-That ($script:reads -eq 0) 'Live execution gate runs before all native access'
 } finally { Remove-Item Function:/Get-ToolkitNativeState; Import-Module (Join-Path $root 'Modules/NativeSettings.psm1') -Force }
 # Compile the fixed bridge on every CI runtime; do not invoke any native setter.
 & (Get-Module NativeSettings) { Initialize-ToolkitNativeSettings }
-$type='WindowsPerformanceToolkit.NativePreferencesV3' -as [type]
+$type='WindowsPerformanceToolkit.NativePreferencesV4' -as [type]
 $methods=@($type.GetMethods([Reflection.BindingFlags]'Public,Static,DeclaredOnly').Name)
 Assert-That ($methods.Count -eq 2 -and 'GetMouse' -in $methods -and 'GetAnimation' -in $methods) 'Compiled bridge publicly exposes only native getters'
 $internal=@($type.GetMethods([Reflection.BindingFlags]'NonPublic,Static,DeclaredOnly').Name)
-Assert-That ('SetMouse' -in $internal -and 'SetAnimation' -in $internal) 'Reviewed setters exist internally without a public live-execution route'
+Assert-That ('SetMouse' -in $internal -and 'SetAnimation' -in $internal) 'Native setters are internal behind the journaled wrapper'
 # Round-trip typed snapshots through JSON for future persistence compatibility.
 $roundTrip=$plans[0].Original | ConvertTo-Json | ConvertFrom-Json
 Assert-That ((Test-ToolkitOperationState -OperationId mouse -ExpectedValue $plans[0].Original -ObservedState (State $roundTrip)).Matches) 'Original snapshot survives JSON serialization'

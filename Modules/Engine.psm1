@@ -2,12 +2,14 @@
 
 function Get-ToolkitExecutionPolicy {
     [CmdletBinding()]
-    param()
-    # A code-level capability gate. JSON, -Confirm, -Force, elevation and
-    # caller-supplied plans cannot enable writes. Phase 4 must implement rollback.
+    param([string]$Directory)
+    $ready=$false
+    if (-not [string]::IsNullOrWhiteSpace($Directory)) {
+        try { $ready=Test-ToolkitNativeValidation -Directory $Directory } catch { $ready=$false }
+    }
     [pscustomobject]@{
-        LiveChangesEnabled=$false; RollbackAvailable=$false
-        Reason='Live execution is locked until persistent backups and verified rollback are implemented in Phase 4.'
+        LiveChangesEnabled=$ready; RollbackAvailable=$true
+        Reason='Native changes require a successful local validation round trip, a durable backup, current-state checks and explicit confirmation. Use -ValidateNative to validate this Windows user/machine first.'
     }
 }
 
@@ -111,7 +113,7 @@ function New-ToolkitExecutionPlan {
             } else { $plan.Target=[pscustomobject]@{MinAnimate=0} }
             $check=Test-ToolkitOperationState -OperationId $id -ExpectedValue $plan.Target -ObservedState $state
             if ($check.Status -eq 'MATCH') { $plan.Status='SKIP'; $plan.Reason='Already configured; no duplicate change is needed.' }
-            else { $plan.Status='READY'; $plan.Reason='Dry-run target prepared. Original values captured in memory only; live execution remains locked.' }
+            else { $plan.Status='READY'; $plan.Reason='Dry-run target prepared. Original values captured in memory only; backed-up apply requires a separate confirmed session.' }
         } catch { $plan.Status='WARN'; $plan.Reason='Could not establish valid original native values. No change is planned.'; $plan.Original=$null; $plan.Target=$null }
         $plan
     }
@@ -123,7 +125,7 @@ function Invoke-ToolkitEngine {
           [ValidateSet('DryRun','Apply')][string]$Mode='DryRun')
     # Fail before reading any caller-supplied plan or reaching native code.
     # Even -WhatIf cannot make an Apply request appear to succeed.
-    if ($Mode -eq 'Apply') { throw (Get-ToolkitExecutionPolicy).Reason }
+    if ($Mode -eq 'Apply') { throw 'Use Invoke-ToolkitSession for backed-up apply; bare plans cannot authorize native writes.' }
     foreach ($entry in $Plan) {
         [pscustomobject]@{
             Id=$entry.Id; Status=$(if ($entry.Status -eq 'READY') { 'DRYRUN' } else { $entry.Status })
@@ -136,4 +138,4 @@ function Invoke-ToolkitEngine {
     }
 }
 
-Export-ModuleMember -Function Get-ToolkitExecutionPolicy, Get-ToolkitOperationDefinitions, Get-ToolkitOperationPermission, Test-ToolkitOperationState, New-ToolkitExecutionPlan, Invoke-ToolkitEngine
+Export-ModuleMember -Function Get-ToolkitExecutionPolicy, Get-ToolkitOperationDefinitions, Get-ToolkitOperationPermission, Test-ToolkitOperationState, New-ToolkitExecutionPlan, Invoke-ToolkitEngine, ConvertTo-ToolkitOperationValue

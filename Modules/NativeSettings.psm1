@@ -2,14 +2,14 @@
 
 function Initialize-ToolkitNativeSettings {
     # Fixed source, never profile- or user-supplied code. Compilation alone does
-    # not call user32. Only getters are public in this Phase 3 build.
-    if ($null -ne ('WindowsPerformanceToolkit.NativePreferencesV3' -as [type])) { return }
+    # not call user32. Only getters are public on the compiled bridge; writes use the journaled wrapper.
+    if ($null -ne ('WindowsPerformanceToolkit.NativePreferencesV4' -as [type])) { return }
     Add-Type -TypeDefinition @'
 using System;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 namespace WindowsPerformanceToolkit {
-    public static class NativePreferencesV3 {
+    public static class NativePreferencesV4 {
         [DllImport("user32.dll", CharSet = CharSet.Unicode, ExactSpelling = true, SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         private static extern bool SystemParametersInfoW(uint action, uint parameter, IntPtr data, uint flags);
@@ -30,9 +30,8 @@ namespace WindowsPerformanceToolkit {
         public static int[] GetMouse() { return ReadValues(0x0003, 12, false); }
         public static int GetAnimation() { return ReadValues(0x0048, 8, true)[0]; }
 
-        // Reviewed setter implementations reserved for a future rollback-aware
-        // dispatcher. Internal visibility deliberately prevents PowerShell API
-        // callers from enabling native writes in this release.
+        // Reviewed setters are internal. The PowerShell wrapper reaches them only
+        // after validating a durable current-user write intent and confirmation.
         private static void WriteValues(uint action, int[] values, bool animation) {
             int bytes = animation ? 8 : 12;
             IntPtr data = Marshal.AllocHGlobal(bytes);
@@ -70,10 +69,10 @@ function Get-ToolkitNativeState {
     try {
         Initialize-ToolkitNativeSettings
         if ($OperationId -eq 'mouse') {
-            $values = [WindowsPerformanceToolkit.NativePreferencesV3]::GetMouse()
+            $values = [WindowsPerformanceToolkit.NativePreferencesV4]::GetMouse()
             $result.Value = [pscustomobject]@{ Threshold1=$values[0]; Threshold2=$values[1]; Acceleration=$values[2] }
         } else {
-            $result.Value = [pscustomobject]@{ MinAnimate=[WindowsPerformanceToolkit.NativePreferencesV3]::GetAnimation() }
+            $result.Value = [pscustomobject]@{ MinAnimate=[WindowsPerformanceToolkit.NativePreferencesV4]::GetAnimation() }
         }
         $result.State='Known'; $result.Detail='Current session API read; this is not a system backup.'
     } catch {
@@ -82,4 +81,28 @@ function Get-ToolkitNativeState {
     $result
 }
 
-Export-ModuleMember -Function Get-ToolkitNativeState
+
+function Invoke-ToolkitNativeWrite {
+    [CmdletBinding(SupportsShouldProcess=$true,ConfirmImpact='High')]
+    param([Parameter(Mandatory)][string]$Directory,[Parameter(Mandatory)][string]$SessionId,
+          [Parameter(Mandatory)][ValidateSet('mouse','animations')][string]$OperationId,[switch]$Restore)
+    if ($env:OS -ne 'Windows_NT' -or -not (Get-ToolkitOperationPermission -SystemInfo (Get-ToolkitSystemInfo)).Allowed) { throw 'Interactive Windows desktop required.' }
+    $record=Read-ToolkitSession -Directory $Directory -SessionId $SessionId -Context (Get-ToolkitContext)
+    $entry=@($record.Entries | Where-Object { $_.Id -eq $OperationId })
+    $required=if ($Restore) { 'Restoring' } else { 'Applying' }
+    if ($entry.Count -ne 1 -or $record.Status -ne $required -or $entry[0].State -ne $required) { throw 'Native write requires durable matching intent.' }
+    if (-not $Restore -and -not $record.Validation -and -not (Test-ToolkitNativeValidation -Directory $Directory)) { throw 'Native validation is missing or expired.' }
+    $value=if ($Restore) { $entry[0].Original } else { $entry[0].Target }
+    $value=ConvertTo-ToolkitOperationValue -OperationId $OperationId -Value $value
+    if (-not $PSCmdlet.ShouldProcess($OperationId,'Write the durably journaled preference value')) { return }
+    Initialize-ToolkitNativeSettings
+    $type='WindowsPerformanceToolkit.NativePreferencesV4' -as [type]
+    if ($OperationId -eq 'mouse') {
+        $method=$type.GetMethod('SetMouse',[Reflection.BindingFlags]'NonPublic,Static')
+        $null=$method.Invoke($null,[object[]]@([int]$value.Threshold1,[int]$value.Threshold2,[int]$value.Acceleration))
+    } else {
+        $method=$type.GetMethod('SetAnimation',[Reflection.BindingFlags]'NonPublic,Static')
+        $null=$method.Invoke($null,[object[]]@([int]$value.MinAnimate))
+    }
+}
+Export-ModuleMember -Function Get-ToolkitNativeState, Invoke-ToolkitNativeWrite

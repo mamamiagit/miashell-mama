@@ -19,3 +19,12 @@ The engine suite uses in-memory fixtures to check complete original/target value
 The CLI DryRun entry point and both dashboard/profile dry-run screens are exercised. On Linux, actual Windows API reads are unavailable; the UI reports that boundary. Windows API read/write/restore cycles remain unvalidated. No hosted CI success is claimed without observing the run.
 
 Local Phase 3 result: 47 regression assertions, 41 recommendation assertions, 38 engine assertions, and the UI walkthrough passed under PowerShell 7.4.13 on Linux. The actual CLI dry-run returned blocked Windows-only plans on this host, as intended.
+
+
+## Phase 4 validation
+
+Local tests run on Linux with PowerShell 7.4.13. Persistent fixture transactions cover exact originals, per-setting/full/idempotent restoration, identity/schema/checksum rejection, write-ahead history, WhatIf, lock contention, interrupted writes, stale plans, external changes, pre/post-write failures, failed automatic rollback and retry, post-write mismatch, and persistence failure before mutation. Tests cannot produce a native validation marker. The CLI, default dry-run behavior and menu walkthrough are checked separately.
+
+Native Windows writes, named-mutex behavior on Windows, restore-point support and local validation itself are not claimed tested by Linux fixtures. The explicit -ValidateNative command performs the real backed-up round trip on the user's Windows system only after confirmation. CI runs fixture suites on Linux/Windows/PowerShell 5.1; it never automatically changes Windows preferences.
+
+Phase 4 local result: 51 regression assertions, 41 recommendation assertions, 38 engine assertions, 39 transaction assertions (169 total), and the UI walkthrough passed. No native Windows setter or restore-point command was executed locally.

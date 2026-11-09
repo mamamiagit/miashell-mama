@@ -1,10 +1,16 @@
 ﻿#Requires -Version 5.1
-[CmdletBinding()]
+[CmdletBinding(SupportsShouldProcess=$true)]
 param(
     [switch]$Preview,
     [switch]$SystemInfoOnly,
     [switch]$Compare,
     [switch]$DryRun,
+    [switch]$Apply,
+    [switch]$ValidateNative,
+    [switch]$ListSessions,
+    [string]$RestoreSession,
+    [ValidateSet('mouse','animations')][string[]]$RestoreId,
+    [switch]$CreateRestorePoint,
     [string[]]$OptimizationId = @('mouse','animations'),
     [ValidateSet('Recommended','Risk','Category','Restart','Applied','Unsupported')][string]$SortBy = 'Recommended',
     [string]$DxDiagPath,
@@ -15,14 +21,17 @@ $ErrorActionPreference = 'Stop'
 # Windows PowerShell 5.1 can evaluate parameter defaults before PSScriptRoot
 # is available. Resolve the default only after parameter binding completes.
 if ([string]::IsNullOrWhiteSpace($DataDirectory)) {
-    $DataDirectory = Join-Path $PSScriptRoot 'Data'
+    $localData=[Environment]::GetFolderPath('LocalApplicationData')
+    if ($env:OS -eq 'Windows_NT' -and -not [string]::IsNullOrWhiteSpace($localData)) {
+        $DataDirectory = Join-Path $localData 'WindowsPerformanceToolkit'
+    } else { $DataDirectory = Join-Path $PSScriptRoot 'Data' }
 }
-foreach ($name in @('SystemInfo','Detection','Recommendation','NativeSettings','Engine','Optimization','Logging','Backup','Restore','Interface')) {
+foreach ($name in @('SystemInfo','Detection','Recommendation','NativeSettings','Engine','Optimization','Logging','Backup','Transactions','Restore','Interface')) {
     Import-Module (Join-Path $PSScriptRoot "Modules/$name.psm1") -Force -ErrorAction Stop
 }
 $settings = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'Config/Settings.json') -Raw | ConvertFrom-Json
-if ($settings.phase -ne 3 -or $settings.simulationOnly -ne $true) {
-    throw 'This build only supports Phase 3 dry-run/simulation. Real operations are not implemented.'
+if ($settings.phase -ne 4 -or $settings.defaultMode -ne 'DryRun') {
+    throw 'This build only supports Phase 4 transaction. Default mode must remain DryRun.'
 }
 $catalog = Get-ToolkitCatalog -Root $PSScriptRoot
 # Keep the default profile first, with stable ordering for remaining profiles.
@@ -30,6 +39,13 @@ $catalog.Profiles = @($catalog.Profiles | Sort-Object @{Expression = { if ($_.id
 $system = Get-ToolkitSystemInfo
 $system | Add-Member -NotePropertyName HagsSupport -NotePropertyValue (Get-ToolkitHagsSupport -SystemInfo $system -DxDiagPath $DxDiagPath)
 $observations = Get-ToolkitObservations -SystemInfo $system
+$modes=@($Preview,$SystemInfoOnly,$Compare,$DryRun,$Apply,$ValidateNative,$ListSessions,(-not [string]::IsNullOrWhiteSpace($RestoreSession)))
+if (@($modes | Where-Object { $_ }).Count -gt 1) { throw 'Choose one output/action mode at a time.' }
+if ($CreateRestorePoint -and -not $Apply) { throw '-CreateRestorePoint is optional for -Apply only.' }
+if ($Apply) { Invoke-ToolkitSession -Directory $DataDirectory -OptimizationId $OptimizationId -CreateRestorePoint:$CreateRestorePoint; return }
+if ($ValidateNative) { Invoke-ToolkitSession -Directory $DataDirectory -ValidateNative; return }
+if ($ListSessions) { Get-ToolkitSessionHistory -Directory $DataDirectory -Context (Get-ToolkitContext); return }
+if (-not [string]::IsNullOrWhiteSpace($RestoreSession)) { Restore-ToolkitSession -Directory $DataDirectory -SessionId $RestoreSession -OptimizationId $RestoreId; return }
 if ($SystemInfoOnly) { $system; return }
 if ($DryRun) {
     $plan=@(New-ToolkitExecutionPlan -OptimizationId $OptimizationId -SystemInfo $system)

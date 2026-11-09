@@ -31,3 +31,8 @@ The user explicitly authorized Phase 2 (recommendation engine) after confirming 
 ## Phase 3 authorization and implementation
 
 After confirming Phase 2 worked, the user authorized the next phase. Version 0.3.0 adds the reviewed operation engine for mouse acceleration and minimize/restore animation: native snapshots, original/target plans, dry-run output, permission checks, and verification. Internal setter implementations are reserved for a future rollback-aware dispatcher; no live changes are exposed. Persistent backups and restoration remain Phase 4 and are not authorized by the Phase 3 instruction. See Docs/ENGINE.md.
+
+
+## Phase 4 authorization and implementation
+
+The user said “Next” after Phase 3, authorizing Phase 4. Version 0.4.0 adds persistent session snapshots/history, atomic checksummed persistence, confirmed backed-up native apply, per-setting/full rollback, interruption recovery, and conservative conflict handling for mouse/animations. Native live use is gated by a successful explicit local validation round trip; Linux fixtures never unlock it. Windows defaults to Local AppData for recovery data across source downloads. Phase 5 is not authorized by this instruction. See Docs/BACKUP-RESTORE.md.
