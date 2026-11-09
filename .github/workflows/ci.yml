@@ -1,7 +1,9 @@
 name: PowerShell compatibility checks
 on:
   push:
+    branches: ['**']
   pull_request:
+  workflow_call:
 permissions:
   contents: read
 jobs:
@@ -21,6 +23,7 @@ jobs:
           ./Tests/Engine.Tests.ps1
           ./Tests/Transactions.Tests.ps1
           ./Tests/Performance.Tests.ps1
+          ./Tests/Distribution.Tests.ps1
       - name: Dashboard preview
         shell: pwsh
         run: ./Start.ps1 -Preview
@@ -34,5 +37,6 @@ jobs:
           ./Tests/Engine.Tests.ps1
           ./Tests/Transactions.Tests.ps1
           ./Tests/Performance.Tests.ps1
+          ./Tests/Distribution.Tests.ps1
           powershell.exe -NoProfile -File ./Start.ps1 -Preview
           if ($LASTEXITCODE -ne 0) { throw 'Windows PowerShell entry point failed.' }

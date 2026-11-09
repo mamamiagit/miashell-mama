@@ -1,0 +1,48 @@
+name: Verified draft release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+jobs:
+  checks:
+    uses: ./.github/workflows/ci.yml
+  package:
+    needs: checks
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exact tagged version
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          $settings = Get-Content Config/Settings.json -Raw | ConvertFrom-Json
+          if ($env:RELEASE_TAG -cne ('v' + $settings.version)) { throw 'Tag/version mismatch.' }
+          ./Tools/Build-Release.ps1 -SourceCommit $env:GITHUB_SHA -OutputDirectory artifacts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-release-assets
+          path: artifacts/*
+          if-no-files-found: error
+  draft:
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-release-assets
+          path: artifacts
+      - name: Create reviewable draft with checksums and manifest
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          $assets = @(Get-ChildItem artifacts -File | Select-Object -ExpandProperty FullName)
+          gh release create $env:RELEASE_TAG --verify-tag --draft --title ('Windows Performance Toolkit ' + $env:RELEASE_TAG) --notes-file Docs/RELEASE-NOTES.md @assets
+          if ($LASTEXITCODE -ne 0) { throw 'Draft creation failed; inspect the existing release before retrying.' }

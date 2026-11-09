@@ -12,7 +12,7 @@ function Show-ToolkitHeader {
     Write-ToolkitLine '|                 WINDOWS PERFORMANCE TOOLKIT                      |'
     Write-ToolkitLine '+------------------------------------------------------------------+'
     Write-ToolkitLine " $Title"
-    Write-ToolkitLine ' PHASE 5 / DEFAULT: DRY-RUN / LIVE CHANGES REQUIRE VALIDATION + CONFIRMATION' Yellow
+    Write-ToolkitLine ' PHASE 6 / DEFAULT: DRY-RUN / LIVE CHANGES REQUIRE VALIDATION + CONFIRMATION' Yellow
     Write-ToolkitLine ''
 }
 
@@ -256,6 +256,7 @@ function Show-ToolkitDashboard {
     Write-ToolkitLine ' [T] Validate native apply/restore on this PC (requires confirmation)'
     Write-ToolkitLine ' [L] Backed-up live apply: mouse + animations (requires confirmation)'
     Write-ToolkitLine ' [P] Performance captures, comparisons and reports'
+    Write-ToolkitLine ' [U] Check for updates (optional network request; no auto-install)'
     Write-ToolkitLine ' [C] Settings / roadmap  [0] Exit'
 }
 
@@ -267,6 +268,7 @@ function Start-ToolkitInterface {
         $choice = Read-ToolkitInput
         switch ($choice) {
             '0' { return }
+            'U' { Get-ToolkitUpdate -CurrentVersion $Settings.version | Format-List | Out-Host; Wait-ToolkitInput; continue }
             'P' { Show-ToolkitPerformance -Directory $HistoryDirectory; continue }
             'D' {
                 Show-ToolkitDryRun -OptimizationId @('mouse','animations') -SystemInfo $SystemInfo
@@ -321,8 +323,8 @@ function Start-ToolkitInterface {
                 Show-ToolkitHeader 'SETTINGS / ROADMAP'
                 Write-ToolkitLine " Version: $($Settings.version) | Theme: $($Settings.theme)"
                 Write-ToolkitLine " Optional simulation logs: $HistoryDirectory"
-                Write-ToolkitLine ' Phase 5: baseline measurements, benchmark imports and reports (current)'
-                Write-ToolkitLine ' Next: release packaging and distribution.'
+                Write-ToolkitLine ' Phase 6: verified versioned packages, offline installs and optional updates (current)'
+                Write-ToolkitLine ' Releases install side by side; backups and measurements stay in the user data folder.'
                 Write-ToolkitLine ' Native apply requires successful local validation; default mode remains dry-run.'
                 Wait-ToolkitInput; continue
             }
@@ -330,7 +332,7 @@ function Start-ToolkitInterface {
         $number = 0
         if ([int]::TryParse($choice, [ref]$number) -and $number -ge 1 -and $number -le $Catalog.Profiles.Count) {
             Show-ToolkitProfile -Profile $Catalog.Profiles[$number-1] -Items $Catalog.Items -SystemInfo $SystemInfo -HistoryDirectory $HistoryDirectory -Observations $Observations
-        } elseif ($choice -notin @('P','D','L','T','O','S','R','H','C')) {
+        } elseif ($choice -notin @('U','P','D','L','T','O','S','R','H','C')) {
             Write-ToolkitLine ' Invalid selection.' Yellow; Wait-ToolkitInput
         }
     }

@@ -2,38 +2,78 @@
 
 A Windows 10/11 optimization and debloat toolkit with a black-and-neon-green PowerShell interface.
 
-**Version 0.5.0 — Phase 5: performance captures, comparisons, benchmark imports, and reports.** Collect read-only Before/After snapshots and compare real imported benchmark summaries. The existing two-operation native engine still requires validation, backup and confirmation; capturing measurements never applies optimizations.
+**Version 0.6.0 — Phase 6: verified distribution.** Versioned ZIP packages, published SHA-256 checksums, per-file manifests, side-by-side local/offline installs, a Windows launcher and an optional update checker. Installation never executes the downloaded app. The toolkit still defaults to dry-run; live mouse/animation operations require local validation, durable backups and confirmation.
 
 ## Run on Windows
 
-Windows PowerShell 5.1 is supported; PowerShell 7 is optional. Administrator permissions are not required.
+Use Windows PowerShell 5.1 (already installed on Windows 10/11) or PowerShell 7. No administrator permissions are needed for ordinary use or per-user installation.
 
-If downloading a GitHub ZIP, right-click the ZIP **before extracting** → **Properties → Unblock → Apply**, then extract it. Open PowerShell in the folder containing `Start.ps1` and run:
+For a source ZIP: right-click the ZIP **before extracting** → **Properties → Unblock → Apply**. Extract, then double-click `Launch.cmd`, or open PowerShell in the folder containing Start.ps1:
 
 ```powershell
 powershell.exe -NoProfile -File .\Start.ps1
 ```
 
-If you already extracted a trusted download and Windows reports that the scripts are unsigned, unblock the local PowerShell files first:
+If already extracted from a trusted source, unblock its scripts first:
 
 ```powershell
 Get-ChildItem -Recurse -File -Include *.ps1,*.psm1 | Unblock-File
 powershell.exe -NoProfile -File .\Start.ps1
 ```
 
-This removes the download marker; it does not change execution policy or satisfy an organization policy requiring signed scripts. The toolkit does not bypass execution policy. Signed releases and verified release installation are future distribution work. `Install.ps1` is only a local launcher.
+Unblocking removes the download marker; it does not bypass execution policy or satisfy an organization requiring signed scripts. This project does not ship an Authenticode certificate. With PowerShell 7 installed, `pwsh` can replace `powershell.exe`. Ordinary startup makes no network requests.
 
-Alternatively, clone the source:
+## Phase 6: verified release installation
+
+Use the assets under [GitHub Releases](https://github.com/mamamiagit/miashell-mama/releases), not GitHub's automatically generated source ZIP, for verified installation. A version tag builds a **draft** release only after compatibility and package checks pass; draft assets are not available to the public downloader until a maintainer publishes the release.
+
+### Portable/offline release
+
+Download `WindowsPerformanceToolkit-0.6.0.zip` and `WindowsPerformanceToolkit-0.6.0.zip.sha256` from the same trusted release. Verify the archive before extracting or running any script:
 
 ```powershell
-git clone https://github.com/mamamiagit/miashell-mama.git
-cd miashell-mama
-powershell.exe -NoProfile -File .\Start.ps1
+$package = '.\WindowsPerformanceToolkit-0.6.0.zip'
+$checksum = '.\WindowsPerformanceToolkit-0.6.0.zip.sha256'
+$expected = ((Get-Content -LiteralPath $checksum -Raw).Trim() -split '\s+')[0]
+$actual = (Get-FileHash -LiteralPath $package -Algorithm SHA256).Hash
+if ($expected -notmatch '^[a-fA-F0-9]{64}$' -or $actual -ine $expected) {
+    throw 'Checksum mismatch. Do not extract or run this package.'
+}
+Unblock-File -LiteralPath $package
+Expand-Archive -LiteralPath $package -DestinationPath .\WindowsPerformanceToolkit-0.6.0
 ```
 
-With PowerShell 7 installed, use `pwsh` instead of `powershell.exe`. No runtime packages or network requests are needed. Linux/macOS can preview the UI; Windows observations and action selections remain unavailable.
+Review the extracted files. Double-click `Launch.cmd` to run portably/offline. Optionally, from the extracted folder, install a verified copy into a versioned per-user directory:
 
-## What's new in Phase 5
+```powershell
+powershell.exe -NoProfile -File .\Install.ps1 -PackagePath ..\WindowsPerformanceToolkit-0.6.0.zip -ChecksumPath ..\WindowsPerformanceToolkit-0.6.0.zip.sha256
+```
+
+The installer verifies the archive and every manifested file, rejects unsafe ZIP paths, stages and verifies contents, unblocks only verified PowerShell files on Windows, then publishes the whole version directory. It prints `LaunchPath`; run that launcher yourself. Existing version folders and recovery data are never replaced.
+
+Default install location: `%LOCALAPPDATA%\WindowsPerformanceToolkit\Versions\0.6.0`. Use `-DestinationRoot` to choose another versions folder. Application data remains in `%LOCALAPPDATA%\WindowsPerformanceToolkit`, separate from installed versions. No profile, PATH, registry, execution-policy or administrator changes are made.
+
+SHA-256 checks establish consistency with the published checksum, **not** an independent publisher signature. Trust the release/source you obtain the checksum and initial installer from. See [distribution design](Docs/DISTRIBUTION.md).
+
+### Explicit online install and update checks
+
+From an already reviewed source/release folder, this downloads only the selected version's assets from this repository, verifies them, and installs without starting code:
+
+```powershell
+powershell.exe -NoProfile -File .\Install.ps1 -Version 0.6.0
+```
+
+No arbitrary GitHub/script URL is accepted. Online installation needs a **published** release; a draft or missing version fails without installing it. Use the offline route with downloaded assets when disconnected.
+
+Choose **U** on the dashboard, or run:
+
+```powershell
+powershell.exe -NoProfile -File .\Start.ps1 -CheckUpdates
+```
+
+Update checks are opt-in and informational only: they never download or install updates. Offline/rate-limited/missing-release responses show Unavailable, not a false “up to date.” To update, explicitly install a new version side by side, inspect it, and launch it. Keep old versions and all session backups until restoration needs are resolved.
+
+## Performance comparison (Phase 5)
 
 Choose **P** on the dashboard for performance captures and reports:
 
@@ -119,7 +159,7 @@ Known disabled Game Mode is currently the only automatically selected simulation
 
 Seven profiles cover Balanced Gaming (default), Competitive Gaming, Low-End PC, Windows Debloat, Privacy Focused, System Responsiveness, and Custom.
 
-- Dashboard: **P** opens performance captures and reports; **D** previews engine operations; **O** opens the comparison of all 18 options; **S** shows hardware and GPU driver details.
+- Dashboard: **U** optionally checks published updates; **P** opens performance captures and reports; **D** previews engine operations; **O** opens the comparison of all 18 options; **S** shows hardware and GPU driver details.
 - Inside a profile: **V** switches between comparison and compact list; **S** chooses one of six sorting orders.
 - **I** opens an item's explanation, drawbacks and sources. Numbers refer to the currently displayed order.
 - **N** selects available recommended changes; numbers toggle eligible entries; **R** resets the selection.
@@ -172,8 +212,9 @@ powershell.exe -NoProfile -File .\Tests\UI.Smoke.ps1
 powershell.exe -NoProfile -File .\Tests\Engine.Tests.ps1
 powershell.exe -NoProfile -File .\Tests\Transactions.Tests.ps1
 powershell.exe -NoProfile -File .\Tests\Performance.Tests.ps1
+powershell.exe -NoProfile -File .\Tests\Distribution.Tests.ps1
 ```
 
 CI is configured for PowerShell 7 on Linux and Windows, and Windows PowerShell 5.1 on Windows. See [validation notes](Docs/VALIDATION.md) for actual local coverage and limitations.
 
-See [recommendation rules and sources](Docs/RECOMMENDATIONS.md), [architecture](Docs/ARCHITECTURE.md), [roadmap](Docs/ROADMAP.md), and [original requirements](Docs/Requirements/SPECIFICATION.md). Native changes require the local validation and backup workflow above. Phase 6 (release packaging and distribution) is next; this update implements Phase 5 as requested.
+See [recommendation rules and sources](Docs/RECOMMENDATIONS.md), [architecture](Docs/ARCHITECTURE.md), [roadmap](Docs/ROADMAP.md), and [original requirements](Docs/Requirements/SPECIFICATION.md). Native changes require the local validation and backup workflow above. The six planned implementation phases are present. Release publication, Windows validation and future expansion remain explicit maintenance work.

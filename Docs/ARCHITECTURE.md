@@ -1,6 +1,6 @@
 # Architecture
 
-`Start.ps1` validates dry-run-default Phase 5 configuration, loads reviewed modules and catalog data, gathers a read-only startup snapshot, and opens the UI. Preview, system info, and comparison modes exit without prompts or history writes. JSON remains data only.
+`Start.ps1` validates dry-run-default Phase 6 configuration, loads reviewed modules and catalog data, gathers a read-only startup snapshot, and opens the UI. Preview, system info, and comparison modes exit without prompts or history writes. JSON remains data only.
 
 - **SystemInfo:** independent CIM queries for Windows client/build, CPU, GPU/driver versions, RAM, disks, active power plan, and portable chassis. Errors become warnings. No fabricated Windows data on other platforms.
 - **Detection:** fixed registry reads return Known/Missing/Error plus source and caveat. Missing values do not imply defaults. Optional dxdiag XML is parsed with DTD/external entities disabled and a document-size limit; imported capability evidence must match detected adapters/drivers.
@@ -20,3 +20,6 @@ The recommendation module intentionally accepts observations as data so fixtures
 
 
 Phase 5 adds Benchmark (strict normalized-summary import and invariant numeric parsing), Performance (read-only collection, schema-validated immutable snapshots and history), and Reports (descriptive resource/configuration/imported-benchmark comparison and standalone exports). Measurement records live separately from recovery sessions and cannot unlock native execution. The performance menu never calls the native apply/restore dispatcher.
+
+
+Phase 6 adds Distribution: fixed-repository optional network operations, strict ZIP/manifest/hash verification, bounded staged extraction and versioned installs without execution. Tools/Build-Release.ps1 creates release assets from an allowlisted clean checkout. The tag workflow builds/tests before producing a reviewable draft. Install and application entry points forward WhatIf/Confirm explicitly; installation and update checks never call the native engine or launch downloaded code.

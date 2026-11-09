@@ -101,6 +101,9 @@ try {
     Must-Reject {Read-ToolkitPerformanceSnapshot -Directory $temp -Id $saved.Id -Context $context} 'Corrupt saved measurement rejected'
     # End-to-end CLI capture/read/compare/export uses the actual current host.
     # On Linux this produces honest preview/unknown Windows metrics.
+    $whatIfDir=Join-Path $temp 'measurement whatif'
+    $null=& (Join-Path $root 'Start.ps1') -CaptureMeasurement Before -DataDirectory $whatIfDir -WhatIf
+    Assert-That (-not (Test-Path -LiteralPath $whatIfDir)) 'Measurement entry point respects WhatIf without saving a capture'
     $cliDir=Join-Path $temp 'cli'
     $cliBefore=& (Join-Path $root 'Start.ps1') -CaptureMeasurement Before -SampleCount 1 -DataDirectory $cliDir
     $cliAfter=& (Join-Path $root 'Start.ps1') -CaptureMeasurement After -SampleCount 1 -DataDirectory $cliDir

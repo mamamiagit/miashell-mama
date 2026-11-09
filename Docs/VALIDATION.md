@@ -37,3 +37,12 @@ Performance tests use fixtures/mocked read-only queries for CPU averages/min/max
 Actual Windows CIM performance collection and behavior across Windows PowerShell 5.1/PowerShell 7 still require Windows validation; configured CI is not evidence of a passing hosted run. No real FPS benchmark result was measured during local development.
 
 Phase 5 local result: 58 regression assertions, 41 recommendation assertions, 38 engine assertions, 39 transaction assertions and 53 performance assertions (229 total), plus the UI walkthrough, passed on Linux/PowerShell 7.4.13. No real gaming benchmark was run.
+
+
+## Phase 6 validation
+
+Distribution tests build a local candidate, verify outer/per-file SHA-256, install offline without executing code, preserve old versions/recovery data, check wrapper WhatIf behavior, verify an installed preview, and reject malformed paths, traversal, absolute/reserved names, duplicate-case files, symlinks, extra/missing entries, corrupted content, wrong hashes, oversize declarations and a non-dry-run default. A canary script with a valid hash is installed but never executed. Mocked network tests cover fixed-URL download, opt-in latest-release checks and graceful offline results; ordinary startup performs no HTTP request.
+
+Local packaging tests do not establish public asset availability, a passing hosted Windows workflow, Authenticode signing, or actual native Windows behavior. Release creation is a tag-triggered draft workflow, conditional on checks and GitHub permissions. Local candidates record dirty provenance until a clean source commit is built.
+
+Phase 6 local result: 62 regression assertions, 41 recommendation assertions, 38 engine assertions, 39 transaction assertions, 54 performance assertions and 39 distribution assertions (273 total), plus the UI walkthrough, passed on Linux/PowerShell 7.4.13. Network responses were mocked. GitHub Actions status reads from this environment returned Forbidden; no hosted success or public release is claimed from those local results.

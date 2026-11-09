@@ -41,3 +41,8 @@ The user said “Next” after Phase 3, authorizing Phase 4. Version 0.4.0 adds 
 ## Phase 5 authorization and implementation
 
 The user first mentioned Phase 6, then explicitly said “Do phase 5”; this turn implements Phase 5 only. Version 0.5.0 adds Before/After resource/configuration captures, saved measurement IDs/history, strict normalized external benchmark summary imports, descriptive comparisons and JSON/CSV/Markdown reports. Missing measurements are never fabricated, incompatible benchmark conditions suppress deltas, and attaching results preserves the original capture by creating a derived ID. Phase 6 distribution work is not included in this update. See Docs/PERFORMANCE.md.
+
+
+## Phase 6 authorization and implementation
+
+The user explicitly requested Phase 6 after Phase 5. Version 0.6.0 adds clean-checkout ZIP/checksum/per-file manifest packaging, verified side-by-side offline/explicit-online installation, Launch.cmd, optional informational updates and tag-triggered tested draft releases. Installation never launches payloads, changes execution policy or overwrites existing versions/recovery data. Draft creation/public asset availability must be observed rather than assumed. See Docs/DISTRIBUTION.md.

@@ -4,7 +4,7 @@ param()
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
-foreach ($name in @('SystemInfo','Detection','Recommendation','NativeSettings','Engine','Optimization','Logging','Backup','Transactions','Restore','Benchmark','Performance','Reports','Interface')) {
+foreach ($name in @('SystemInfo','Detection','Recommendation','NativeSettings','Engine','Optimization','Logging','Backup','Transactions','Restore','Benchmark','Performance','Reports','Distribution','Interface')) {
     Import-Module (Join-Path $root "Modules/$name.psm1") -Force
 }
 $catalog = Get-ToolkitCatalog -Root $root
